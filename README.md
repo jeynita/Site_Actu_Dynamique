@@ -42,14 +42,14 @@ Site web d'actualité dynamique permettant la consultation publique d'articles e
 ## Structure du projet
 
 projet/
-├── config/
-├── includes/
-├── auth/
-├── articles/
-├── categories/
-├── utilisateurs/
-├── assets/
-└── index.php
+-config/
+-includes/
+-auth/
+-articles/
+-categories/
+-utilisateurs/
+-assets/
+-index.php
 
 ## Base de données
 
@@ -67,7 +67,7 @@ Le script SQL est fourni dans le fichier `database.sql`.
 - Validation des formulaires côté client (JavaScript) et serveur (PHP)
 - Protection contre les failles XSS avec htmlspecialchars()
 
-##Commandes Git essentielles
+## Commandes Git essentielles
 git init
 git add .
 git commit -m "Initial commit"
