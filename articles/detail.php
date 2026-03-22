@@ -8,7 +8,7 @@ $stmt = $pdo->prepare(
 FROM articles a
 JOIN categories c ON a.id_categorie = c.id
 JOIN utilisateurs u ON a.id_auteur = u.id
-WHERE a.id = :id'
+WHERE a.id = :id' 
 );
 $stmt->execute([':id' => $id]);
 $article = $stmt->fetch();
