@@ -1,0 +1,12 @@
+# OneDrive et Windows
+Thumbs.db
+desktop.ini
+$RECYCLE.BIN/
+*.tmp
+
+# IDE (VS Code, PHPStorm)
+.vscode/
+.idea/
+
+# Divers
+.DS_Store
