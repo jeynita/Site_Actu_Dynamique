@@ -7,7 +7,7 @@ $stmt = $pdo->prepare('SELECT * FROM categories WHERE id = :id');
 $stmt->execute([':id' => $id_cat]);
 $categorie = $stmt->fetch();
 if (!$categorie) {
-header('Location: /Site_Actu_Dynamique/accueil.php');
+header('Location: /.../accueil.php');
 exit;
 }
 $stmt = $pdo->prepare(
@@ -27,7 +27,7 @@ $categories = $pdo->query('SELECT id, nom FROM categories ORDER BY nom')->fetchA
 <head>
 <meta charset="UTF-8">
 <title>Categorie : <?= htmlspecialchars($categorie['nom']) ?></title>
-<link rel="stylesheet" href="/Site_Actu_Dynamique/css/style.css">
+<link rel="stylesheet" href="/.../css/style.css">
 </head>
 <body>
 <?php include __DIR__ . '/../entete.php'; ?>
@@ -35,7 +35,7 @@ $categories = $pdo->query('SELECT id, nom FROM categories ORDER BY nom')->fetchA
 <main class="container">
 <div class="filtres">
 <strong>Categories :</strong>
-<a href="/Site_Actu_Dynamique/accueil.php" class="btn-filtre">Toutes</a>
+<a href="/.../accueil.php" class="btn-filtre">Toutes</a>
 <?php foreach ($categories as $cat): ?>
 <a href="par_categorie.php?id=<?= $cat['id'] ?>"
 class="btn-filtre <?= $cat['id'] == $id_cat ? 'actif' : '' ?>">

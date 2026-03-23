@@ -18,7 +18,7 @@ $articles = $stmt->fetchAll();
 <head>
 <meta charset="UTF-8">
 <title>Gestion des articles</title>
-<link rel="stylesheet" href="/Site_Actu_Dynamique/css/style.css">
+<link rel="stylesheet" href="/.../css/style.css">
 </head>
 <body>
 <?php include __DIR__ . '/../entete.php'; ?>

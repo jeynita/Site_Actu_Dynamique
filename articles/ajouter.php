@@ -36,7 +36,7 @@ exit;
 <html lang="fr">
 <head>
 <meta charset="UTF-8"><title>Ajouter un article</title>
-<link rel="stylesheet" href="/Site_Actu_Dynamique/css/style.css">
+<link rel="stylesheet" href="/.../css/style.css">
 </head>
 <body>
 <?php include __DIR__ . '/../entete.php'; include __DIR__ . '/../menu.php'; ?>
