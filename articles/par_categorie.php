@@ -27,7 +27,7 @@ $categories = $pdo->query('SELECT id, nom FROM categories ORDER BY nom')->fetchA
 <head>
 <meta charset="UTF-8">
 <title>Categorie : <?= htmlspecialchars($categorie['nom']) ?></title>
-<link rel="stylesheet" href="/.../css/style.css">
+<link rel="stylesheet" href="/Site_Actu_Dynamique/css/style.css">
 </head>
 <body>
 <?php include __DIR__ . '/../entete.php'; ?>

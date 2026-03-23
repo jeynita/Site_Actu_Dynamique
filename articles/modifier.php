@@ -36,7 +36,7 @@ $contenu = $article['contenu']; $id_cat = $article['id_categorie'];
 <!DOCTYPE html>
 <html lang="fr">
 <head><meta charset="UTF-8"><title>Modifier article</title>
-<link rel="stylesheet" href="/.../css/style.css"></head>
+<link rel="stylesheet" href="/Site_Actu_Dynamique/css/style.css"></head>
 <body>
 <?php include __DIR__ . '/../entete.php'; include __DIR__ . '/../menu.php'; ?>
 <main class="container">
