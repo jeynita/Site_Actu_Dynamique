@@ -1,5 +1,5 @@
 -- ============================================================
---  Site d'actualité dynamique — Script SQL complet
+--  Site d'actualité dynamique — Script SQL complet (Version Bonus)
 -- ============================================================
 
 CREATE DATABASE IF NOT EXISTS site_actualite
@@ -30,13 +30,14 @@ CREATE TABLE IF NOT EXISTS utilisateurs (
 ) ENGINE=InnoDB;
 
 -- ------------------------------------------------------------
--- Table : articles
+-- Table : articles (AJOUT DE LA COLONNE IMAGE)
 -- ------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS articles (
     id                 INT AUTO_INCREMENT PRIMARY KEY,
     titre              VARCHAR(255) NOT NULL,
     description_courte TEXT NOT NULL,
     contenu            LONGTEXT NOT NULL,
+    image              VARCHAR(255) DEFAULT NULL, -- Colonne pour le bonus Upload
     date_publication   DATETIME DEFAULT CURRENT_TIMESTAMP,
     id_categorie       INT NOT NULL,
     id_auteur          INT NOT NULL,
@@ -60,22 +61,23 @@ INSERT INTO utilisateurs (nom, prenom, login, mot_de_passe, role) VALUES
     ('Diallo', 'Amadou', 'admin',   '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'administrateur'),
     ('Ndiaye', 'Fatou',  'editeur', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'editeur');
 
-INSERT INTO articles (titre, description_courte, contenu, id_categorie, id_auteur) VALUES
+-- Articles de test avec images fictives
+INSERT INTO articles (titre, description_courte, contenu, id_categorie, id_auteur, image) VALUES
     (
         'Intelligence artificielle : les avancées de 2026',
         'Un tour d\'horizon des principales évolutions de l\'IA cette année.',
-        'L\'intelligence artificielle continue de transformer de nombreux secteurs en 2026. Les modèles de langage sont devenus omniprésents dans les entreprises, les hôpitaux et les établissements d\'enseignement. Cet article analyse les tendances majeures et leurs impacts sur la société sénégalaise.',
-        1, 2
+        'L\'intelligence artificielle continue de transformer de nombreux secteurs en 2026...',
+        1, 2, 'ia_2026.jpg'
     ),
     (
         'CAN 2026 : le Sénégal en demi-finale',
         'Les Lions de la Téranga ont éliminé le Maroc aux tirs au but.',
-        'Dans un match haletant disputé hier soir à Dakar, l\'équipe nationale sénégalaise a validé son billet pour le dernier carré de la compétition continentale. Le gardien a été décisif lors de la séance de tirs au but, arrêtant deux tentatives adverses.',
-        2, 2
+        'Dans un match haletant disputé hier soir à Dakar...',
+        2, 2, 'lions_senegal.png'
     ),
     (
         'Réforme de l\'enseignement supérieur au Sénégal',
         'Le gouvernement annonce un plan de modernisation des universités publiques.',
-        'Le ministère de l\'Enseignement supérieur a présenté un vaste programme de réforme visant à améliorer la qualité de la formation et à renforcer l\'insertion professionnelle des diplômés. Parmi les mesures phares figurent la digitalisation des cours et le renforcement des partenariats avec le secteur privé.',
-        4, 2
+        'Le ministère de l\'Enseignement supérieur a présenté un vaste programme...',
+        4, 2, NULL
     );
