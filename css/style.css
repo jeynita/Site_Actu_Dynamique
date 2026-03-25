@@ -17,12 +17,8 @@ a:hover { text-decoration: underline; }
 .container { max-width: 1100px; margin: 0 auto; padding: 0 1.5rem; }
 
 .entete {
-    /* ÉTAPE A : Mettre l'image de fond (remplace par ton URL d'image) */
     background: url('/Site_Actu_Dynamique/images/etudiants_esp.jpg') no-repeat center center;
     background-size: cover;
-    
-    /* ÉTAPE B : Le Filtre de Lisibilité */
-    /* On ajoute une couche semi-transparente sombre par-dessus l'image */
     position: relative;
 }
 .entete::before {
@@ -32,12 +28,12 @@ a:hover { text-decoration: underline; }
     left: 0;
     width: 100%;
     height: 100%;
-    background-color: rgba(15, 23, 42, 0.7); /* Bleu nuit transparent à 70% */
-    z-index: 1; /* Place le filtre sous le texte mais sur l'image */
+    background-color: rgba(15, 23, 42, 0.7); 
+    z-index: 1; 
 }
 .entete .container {
     position: relative;
-    z-index: 2; /* Place le texte au-dessus du filtre */
+    z-index: 2; 
     padding: 2rem 0;
 }
 .entete .logo { color: #fff; font-size: 1.5rem; font-weight: 700; }
@@ -239,19 +235,18 @@ h1 {
 }
 .pied { background: #1a1a2e; color: #8892b0; text-align: center; padding: 1.2rem; margin-top: 3rem; }
 
-/* --- TABLE DE GESTION ÉPURÉE --- */
 .tableau {
     width: 100%;
     border-collapse: collapse;
     background: #fff;
     border-radius: 10px;
-    overflow: hidden; /* Pour que les arrondis fonctionnent */
+    overflow: hidden; 
     box-shadow: 0 4px 15px rgba(0,0,0,0.05);
     margin-top: 1.5rem;
 }
 
 .tableau thead {
-    background: #1a1a2e; /* Rappel du menu sombre */
+    background: #1a1a2e; 
     color: #ffffff;
 }
 
@@ -272,13 +267,11 @@ h1 {
     vertical-align: middle;
 }
 
-/* Effet de ligne au survol */
 .tableau tbody tr:hover {
     background-color: #f8fafc;
     transition: background 0.2s ease;
 }
 
-/* Style des boutons d'actions plus compacts */
 .actions-group {
     display: flex;
     gap: 8px;
@@ -308,7 +301,6 @@ h1 {
 
 .btn-delete:hover { background: #ffe4e6; }
 
-/* Badge pour la catégorie dans le tableau */
 .cat-tag {
     background: #f3f4f6;
     padding: 4px 8px;
@@ -316,7 +308,6 @@ h1 {
     font-size: 0.8rem;
     color: #374151;
 }
-/* --- COMPLÉMENTS POUR XIBAAR YI (HEADER) --- */
 .entete .logo-groupe {
     display: flex;
     align-items: center;
@@ -343,7 +334,7 @@ h1 {
 }
 
 .entete .slogan-site {
-    color: #8892b0; /* Ton gris bleu de base */
+    color: #8892b0; 
     font-size: 0.9rem;
     margin-top: 0.3rem;
 }
@@ -353,9 +344,8 @@ h1 {
     font-weight: 600;
 }
 
-/* --- COMPLÉMENTS POUR LE PIED DE PAGE PRO --- */
 .pied-page {
-    background: #1a1a2e; /* Ton bleu sombre de base */
+    background: #1a1a2e; 
     color: #8892b0;
     padding: 3rem 0 1.5rem 0;
     margin-top: 4rem;
@@ -399,7 +389,7 @@ h1 {
 }
 
 .footer-links a:hover {
-    color: #e94560; /* Rappel de ton rouge boutons */
+    color: #e94560; 
     text-decoration: none;
 }
 
@@ -419,7 +409,6 @@ h1 {
     font-style: italic;
 }
 
-/* --- RESPONSIVE --- */
 @media (max-width: 768px) {
     .footer-grid {
         flex-direction: column;
@@ -434,7 +423,6 @@ h1 {
         gap: 0.5rem;
     }
 }
-/* Aligne le logo et le texte verticalement */
 .entete .logo-groupe {
     display: flex;
     align-items: center;
@@ -442,7 +430,6 @@ h1 {
     padding: 1rem 0;
 }
 
-/* Donne du style au titre pour qu'il soit imposant */
 .entete .titre-site {
     margin: 0;
     color: #fff;
@@ -452,33 +439,101 @@ h1 {
     line-height: 1.1;
 }
 
-/* Style du slogan */
 .entete .slogan-site {
     margin: 0;
     color: #8892b0;
     font-size: 0.95rem;
 }
 
-/* Optionnel : Si tu as une ligne bleue sous ton titre comme sur l'image, 
-   assure-toi qu'elle ne traverse pas tout l'écran mais reste dans le container */
 .entete {
     border-bottom: 3px solid #0056b3; 
 }
 
-/* --- AJUSTEMENT POUR L'ICÔNE --- */
-/* On force l'icône à être invisible en texte pour laisser le ::before agir */
+
 .icone-journal {
     font-size: 0 !important; 
 }
 
 .icone-journal::before {
-    content: '🎙️'; /* Icône de micro */
+    content: ''; 
     font-size: 2.5rem;
 }
 
-/* Aligner l'icône et le texte proprement */
 .logo-groupe {
     display: flex;
-    align-items: center; /* Aligne verticalement au centre */
-    gap: 1rem;           /* Espace entre l'icône et le texte */
+    align-items: center; 
+    gap: 1rem;                   
+}
+
+/* --- AJOUT : STYLES FILTRES CATÉGORIES (MODERN UI) --- */
+.filter-wrapper {
+    margin: 1.5rem 0;
+    padding: 1.2rem;
+    background: #fff;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+}
+
+.filter-label {
+    font-weight: 700;
+    margin-bottom: 1rem;
+    display: block;
+    color: #1a1a2e;
+    font-size: 0.95rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.filter-group {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.filter-pill {
+    display: inline-flex;
+    align-items: center;
+    padding: 7px 15px;
+    background-color: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 25px;
+    text-decoration: none !important;
+    color: #475569;
+    font-size: 0.9rem;
+    font-weight: 600;
+    transition: all 0.2s ease;
+}
+
+.filter-pill:hover {
+    border-color: #261fea;
+    color: #261fea;
+    background-color: #f0f7ff;
+    transform: translateY(-1px);
+}
+
+.filter-pill.active {
+    background-color: #261fea;
+    color: #ffffff;
+    border-color: #261fea;
+    box-shadow: 0 4px 10px rgba(38, 31, 234, 0.2);
+}
+
+.pill-count {
+    margin-left: 8px;
+    font-size: 0.75rem;
+    background-color: rgba(0, 0, 0, 0.06);
+    padding: 2px 7px;
+    border-radius: 12px;
+    opacity: 0.8;
+}
+
+.filter-pill.active .pill-count {
+    background-color: rgba(255, 255, 255, 0.2);
+    color: #ffffff;
+    opacity: 1;
+}
+
+@media (max-width: 600px) {
+    .filter-wrapper { padding: 1rem; }
+    .filter-pill { padding: 6px 12px; font-size: 0.85rem; }
 }

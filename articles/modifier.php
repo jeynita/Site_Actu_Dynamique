@@ -2,7 +2,6 @@
 require_once __DIR__ . '/../config/db.php';
 require_once __DIR__ . '/../config/session.php';
 
-// Vérification des droits (ajuster selon ta fonction autoriser)
 if (!isset($_SESSION['user_id'])) {
     header('Location: ../connexion.php');
     exit;
@@ -11,17 +10,15 @@ if (!isset($_SESSION['user_id'])) {
 $pdo = getPDO();
 $id = (int)($_GET['id'] ?? 0);
 
-// 1. Récupération de l'article actuel
 $stmt = $pdo->prepare('SELECT * FROM articles WHERE id = :id');
 $stmt->execute([':id' => $id]);
 $article = $stmt->fetch();
 
 if (!$article) {
-    header('Location: liste.php'); // Ou mes_articles.php selon ton fichier
+    header('Location: liste.php'); 
     exit;
 }
 
-// 2. Initialisation des variables et catégories
 $categories = $pdo->query('SELECT id, nom FROM categories ORDER BY nom')->fetchAll();
 $erreurs = [];
 $succes = false;
@@ -32,17 +29,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $contenu = trim($_POST['contenu'] ?? '');
     $id_cat = (int)($_POST['id_categorie'] ?? 0);
 
-    // Validations
     if (empty($titre)) $erreurs[] = 'Le titre est obligatoire.';
     if (empty($description)) $erreurs[] = 'La description courte est obligatoire.';
     if (empty($contenu)) $erreurs[] = 'Le contenu est obligatoire.';
     if ($id_cat <= 0) $erreurs[] = 'Veuillez choisir une catégorie.';
 
-    // 3. Gestion de l'image (Bonus)
-    $nom_image = $article['image']; // Par défaut, on garde l'ancienne
+    $nom_image = $article['image']; 
 
     if (isset($_FILES['image']) && $_FILES['image']['error'] === UPLOAD_ERR_OK) {
-        // Chemin absolu vers le dossier uploads
         $dossier_upload = realpath(__DIR__ . '/..') . DIRECTORY_SEPARATOR . 'uploads' . DIRECTORY_SEPARATOR;
         
         if (!is_dir($dossier_upload)) {
@@ -59,7 +53,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $chemin_destination = $dossier_upload . $nouveau_nom;
 
             if (move_uploaded_file($_FILES['image']['tmp_name'], $chemin_destination)) {
-                // Suppression de l'ancienne image physique si elle existe
                 if (!empty($article['image']) && file_exists($dossier_upload . $article['image'])) {
                     unlink($dossier_upload . $article['image']);
                 }
@@ -70,7 +63,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 
-    // 4. Mise à jour de la base de données
     if (empty($erreurs)) {
         try {
             $stmt = $pdo->prepare('
@@ -88,14 +80,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 ':id'      => $id
             ]);
             $succes = true;
-            // On met à jour l'objet article pour l'affichage immédiat
             $article['image'] = $nom_image;
         } catch (PDOException $e) {
             $erreurs[] = "Erreur SQL : " . $e->getMessage();
         }
     }
 } else {
-    // Pré-remplissage du formulaire lors du premier chargement (GET)
     $titre = $article['titre'];
     $description = $article['description_courte'];
     $contenu = $article['contenu'];

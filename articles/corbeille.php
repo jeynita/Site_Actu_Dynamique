@@ -2,12 +2,10 @@
 require_once __DIR__ . '/../config/db.php';
 require_once __DIR__ . '/../config/session.php';
 
-// Sécurité : Seuls les admins ou éditeurs accèdent à la corbeille
 autoriser(['editeur', 'administrateur']);
 
 $pdo = getPDO();
 
-// Requête pour récupérer uniquement les articles ARCHIVÉS (est_supprime = 1)
 $stmt = $pdo->query('
     SELECT a.id, a.titre, a.date_publication, c.nom AS categorie,
     CONCAT(u.prenom, " ", u.nom) AS auteur

@@ -3,13 +3,11 @@ $dossier = __DIR__ . '/uploads';
 
 echo "<h1>Diagnostic du Système - Site Actu Dynamique</h1>";
 
-// 1. Vérification du dossier
 if (!is_dir($dossier)) {
     echo "<p style='color:red;'>Le dossier 'uploads' n'existe pas.</p>";
 } else {
     echo "<p style='color:green;'>Le dossier 'uploads' est présent.</p>";
     
-    // 2. Vérification des droits d'écriture
     if (is_writable($dossier)) {
         echo "<p style='color:green;'>Le dossier est accessible en écriture (Prêt pour l'upload).</p>";
     } else {
@@ -17,7 +15,6 @@ if (!is_dir($dossier)) {
     }
 }
 
-// 3. Vérification des limites PHP (pour ne pas être bloqué par des images lourdes)
 echo "<h3>Configuration PHP :</h3>";
 echo "<ul>";
 echo "<li>Taille max fichier (upload_max_filesize) : " . ini_get('upload_max_filesize') . "</li>";

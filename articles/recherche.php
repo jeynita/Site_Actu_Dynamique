@@ -1,6 +1,9 @@
+
 <?php
 require_once __DIR__ . '/../config/db.php';
 require_once __DIR__ . '/../config/session.php';
+
+autoriser(['admin', 'editeur', 'utilisateur']); 
 
 $pdo = getPDO();
 $search = isset($_GET['q']) ? trim($_GET['q']) : '';
@@ -9,27 +12,25 @@ $articles = [];
 
 if (!empty($search)) {
     try {
-        // Sélection des articles avec jointures
-    // Sélection des articles avec jointures
         $sql = "SELECT a.*, c.nom AS categorie, CONCAT(u.prenom, ' ', u.nom) AS auteur 
-        FROM articles a 
-        JOIN categories c ON a.id_categorie = c.id 
-        JOIN utilisateurs u ON a.id_auteur = u.id 
-        WHERE (a.titre LIKE :q1 OR a.contenu LIKE :q2) 
-        AND a.est_supprime = 0
-        ORDER BY a.date_publication DESC";
+                FROM articles a 
+                JOIN categories c ON a.id_categorie = c.id 
+                JOIN utilisateurs u ON a.id_auteur = u.id 
+                WHERE (a.titre LIKE :q1 OR a.contenu LIKE :q2) 
+                AND a.est_supprime = 0
+                ORDER BY a.date_publication DESC";
 
-$stmt = $pdo->prepare($sql);
-$param = "%$search%";
+        $stmt = $pdo->prepare($sql);
+        $param = "%$search%";
 
-$stmt->execute([
-    ':q1' => $param,
-    ':q2' => $param
-]);
+        $stmt->execute([
+            ':q1' => $param,
+            ':q2' => $param
+        ]);
         
         $articles = $stmt->fetchAll();
     } catch (PDOException $e) {
-        $erreur_sql = "Erreur lors de la recherche : " . $e->getMessage();
+        $erreur_sql = "Erreur : " . $e->getMessage();
     }
 }
 ?>
@@ -54,22 +55,22 @@ $stmt->execute([
 
     <section class="recherche-container">
         <form action="recherche.php" method="GET" class="barre-recherche">
-            <input type="text" name="q" value="<?= htmlspecialchars($search) ?>" placeholder="Rechercher un article...">
+            <input type="text" name="q" value="<?= htmlspecialchars($search) ?>" placeholder="Rechercher..." required>
             <button type="submit">Rechercher</button>
         </form>
     </section>
 
     <?php if (empty($search)): ?>
-        <p class="vide">Veuillez saisir un mot-clé pour lancer la recherche.</p>
+        <p class="vide">Saisissez un mot-clé.</p>
     <?php elseif (empty($articles)): ?>
-        <p class="vide">Aucun article ne correspond à "<strong><?= htmlspecialchars($search) ?></strong>".</p>
+        <p class="vide">Aucun résultat pour "<strong><?= htmlspecialchars($search) ?></strong>".</p>
     <?php else: ?>
-        <p class="compteur"><?= count($articles) ?> résultat(s) trouvé(s) pour "<?= htmlspecialchars($search) ?>"</p>
+        <p class="compteur"><?= count($articles) ?> résultat(s)</p>
         
         <div class="liste-articles">
             <?php foreach ($articles as $a): ?>
                 <article class="carte-article">
-                    <div class="badge-categorie"><?= htmlspecialchars($a['categorie']) ?></div>
+                    <span class="badge-categorie"><?= htmlspecialchars($a['categorie']) ?></span>
                     
                     <h2>
                         <a href="detail.php?id=<?= $a['id'] ?>">
@@ -78,15 +79,11 @@ $stmt->execute([
                     </h2>
                     
                     <?php if (!empty($a['image'])): ?>
-                        <div class="image-apercu">
-                            <img src="/Site_Actu_Dynamique/uploads/<?= htmlspecialchars($a['image']) ?>" 
-                                 alt="" 
-                                 style="max-width: 200px; border-radius: 5px; margin: 10px 0; display: block;">
-                        </div>
+                        <img src="/Site_Actu_Dynamique/uploads/<?= htmlspecialchars($a['image']) ?>" alt="" class="article-image-mini">
                     <?php endif; ?>
 
                     <p class="description">
-                        <?= htmlspecialchars(mb_strimwidth($a['contenu'], 0, 160, "...")) ?>
+                        <?= htmlspecialchars(mb_strimwidth(strip_tags($a['contenu']), 0, 160, "...")) ?>
                     </p>
 
                     <footer class="meta-article">
@@ -99,7 +96,7 @@ $stmt->execute([
     <?php endif; ?>
 
     <div style="margin-top: 2rem;">
-        <a href="../accueil.php" class="btn-secondaire">Retour à l'accueil</a>
+        <a href="../accueil.php" class="btn-secondaire">Retour</a>
     </div>
 </main>
 

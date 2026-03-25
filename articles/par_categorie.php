@@ -6,12 +6,10 @@ $pdo = getPDO();
 
 $id_cat = (int)($_GET['id'] ?? 0);
 
-// Pagination
 $par_page = 5;
 $page_courante = max(1, (int)($_GET['page'] ?? 1));
 $offset = ($page_courante - 1) * $par_page;
 
-// Vérifier catégorie
 $stmt = $pdo->prepare('SELECT * FROM categories WHERE id = :id');
 $stmt->execute([':id' => $id_cat]);
 $categorie = $stmt->fetch();
@@ -21,14 +19,12 @@ if (!$categorie) {
     exit;
 }
 
-// Total articles catégorie
 $stmt = $pdo->prepare('SELECT COUNT(*) FROM articles WHERE id_categorie = :id_cat');
 $stmt->execute([':id_cat' => $id_cat]);
 $total = (int)$stmt->fetchColumn();
 
 $nb_pages = (int)ceil($total / $par_page);
 
-// Articles paginés
 $stmt = $pdo->prepare(
     'SELECT a.id, a.titre, a.description_courte, a.date_publication,
             CONCAT(u.prenom, " ", u.nom) AS auteur
@@ -46,7 +42,6 @@ $stmt->execute();
 
 $articles = $stmt->fetchAll();
 
-// Catégories
 $categories = $pdo->query('SELECT id, nom FROM categories ORDER BY nom')->fetchAll();
 ?>
 <!DOCTYPE html>
@@ -106,7 +101,6 @@ Par <strong><?= htmlspecialchars($a['auteur']) ?></strong>
 
 </div>
 
-<!-- Pagination -->
 <?php if ($nb_pages > 1): ?>
 <nav class="pagination">
 

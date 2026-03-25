@@ -5,7 +5,6 @@ require_once __DIR__ . '/../config/session.php';
 $pdo  = getPDO();
 $id   = (int)($_GET['id'] ?? 0);
 
-// MODIFICATION 1 : Ajout de la condition 'est_supprime = 0'
 $stmt = $pdo->prepare(
     'SELECT a.*, c.nom AS categorie, CONCAT(u.prenom, " ", u.nom) AS auteur
      FROM articles a
@@ -16,9 +15,7 @@ $stmt = $pdo->prepare(
 $stmt->execute([':id' => $id]);
 $article = $stmt->fetch();
 
-// MODIFICATION 2 : Si l'article n'existe pas OU est archivé
 if (!$article) {
-    // Redirection avec un petit message d'erreur dans l'URL (optionnel)
     header('Location: /Site_Actu_Dynamique/accueil.php?erreur=introuvable');
     exit;
 }

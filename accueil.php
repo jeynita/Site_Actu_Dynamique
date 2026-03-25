@@ -7,11 +7,9 @@ $par_page      = 5;
 $page_courante = max(1, (int)($_GET['page'] ?? 1));
 $offset        = ($page_courante - 1) * $par_page;
 
-// Total articles
 $total    = (int)$pdo->query('SELECT COUNT(*) FROM articles')->fetchColumn();
 $nb_pages = (int)ceil($total / $par_page);
 
-// Récupération articles
 $stmt = $pdo->prepare(
     'SELECT a.id, a.titre, a.description_courte, a.date_publication,
             c.nom AS categorie, c.id AS id_categorie,
@@ -28,7 +26,6 @@ $stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
 $stmt->execute();
 $articles = $stmt->fetchAll();
 
-// Catégories avec compteur
 $categories = $pdo->query(
     'SELECT c.id, c.nom, COUNT(a.id) as total_articles
      FROM categories c
@@ -52,13 +49,11 @@ $categories = $pdo->query(
 
 <main class="container">
 
-    <!-- Barre de recherche -->
     <form action="/Site_Actu_Dynamique/articles/recherche.php" method="GET" class="barre-recherche">
         <input type="text" name="q" placeholder="Rechercher un article..." required>
         <button type="submit">Rechercher</button>
     </form>
 
-    <!-- Catégories -->
     <div class="filtres">
         <strong>Catégories :</strong>
         <a href="/Site_Actu_Dynamique/accueil.php" class="btn-filtre">Toutes</a>
@@ -105,7 +100,6 @@ $categories = $pdo->query(
         <?php endforeach; ?>
     </div>
 
-    <!-- Pagination numérotée -->
     <?php if ($nb_pages > 1): ?>
         <nav class="pagination">
 
@@ -115,7 +109,7 @@ $categories = $pdo->query(
 
             <?php for ($i = 1; $i <= $nb_pages; $i++): ?>
                 <a href="?page=<?= $i ?>"
-                   class="<?= $i == $page_courante ? 'active' : '' ?>">
+                class="<?= $i == $page_courante ? 'active' : '' ?>">
                     <?= $i ?>
                 </a>
             <?php endfor; ?>

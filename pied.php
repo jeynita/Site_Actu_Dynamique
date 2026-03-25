@@ -8,9 +8,8 @@
 
             <div class="footer-section">
                 <ul class="footer-links">
-                    <li><a href="#">Charte de déontologie</a></li>
-                    <li><a href="#">Mentions légales</a></li>
-                    <li><a href="#">Contact Rédaction</a></li>
+                    
+                    <li><a href="#">XIBAAR@info.sn</a></li>
                 </ul>
             </div>
         </div>
@@ -20,4 +19,5 @@
             <p class="footer-note">L'exactitude de l'information est notre priorité. Toute reproduction est soumise à autorisation.</p>
         </div>
     </div>
+</footer>
 </footer>

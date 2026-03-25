@@ -1,11 +1,8 @@
-// ============================================================
-// js/validation.js -- Fonctions de validation réutilisables
-// ============================================================
+
 /**
- * Valide qu'un champ n'est pas vide
- * @param {string} id - ID du champ
- * @param {string} errId - ID du span erreur
- * @param {string} msg - Message d'erreur
+ * @param {string} id 
+ * @param {string} errId 
+ * @param {string} msg 
  * @returns {boolean}
  */
 function validerChamp(id, errId, msg) {
@@ -18,9 +15,6 @@ function validerChamp(id, errId, msg) {
   }
   return true;
 }
-/**
- * Valide que deux mots de passe correspondent
- */
 function validerMotsDePasse(id1, id2, errId) {
   const v1 = document.getElementById(id1)?.value;
   const v2 = document.getElementById(id2)?.value;
@@ -36,9 +30,7 @@ function validerMotsDePasse(id1, id2, errId) {
   }
   return true;
 }
-/**
- * Reinitialise tous les messages d'erreur JS d'un formulaire
- */
+
 function reinitialiserErreurs(formId) {
   const form = document.getElementById(formId);
   if (!form) return;

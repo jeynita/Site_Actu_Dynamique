@@ -1,5 +1,4 @@
 <?php
-// On s'assure que le titre du site est cohérent partout
 $nom_site = "XIBAAR YI";
 ?>
 <header class="entete">

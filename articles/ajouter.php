@@ -1,26 +1,21 @@
 <?php
-// 1. Inclusions avec chemins relatifs robustes
 require_once __DIR__ . '/../config/db.php';
 require_once __DIR__ . '/../config/session.php';
 
-// 2. Vérification des droits via la fonction définie dans session.php
 autoriser(['editeur', 'administrateur']);
 
 $pdo = getPDO();
 $erreurs = [];
 $succes = false;
 
-// Récupération de l'ID de l'auteur depuis la session
 $id_auteur = $_SESSION['utilisateur']['id'] ?? null;
 
-// 3. Préparation du dossier d'upload
 $upload_dir = realpath(__DIR__ . '/..') . DIRECTORY_SEPARATOR . 'uploads' . DIRECTORY_SEPARATOR;
 
 if (!is_dir($upload_dir)) {
     mkdir($upload_dir, 0777, true);
 }
 
-// 4. Traitement du formulaire
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $titre = trim($_POST['titre'] ?? '');
     $description = trim($_POST['description_courte'] ?? '');
@@ -32,7 +27,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $erreurs[] = "Tous les champs obligatoires (*) doivent être remplis.";
     }
 
-    // Gestion de l'image
     if (isset($_FILES['image']) && $_FILES['image']['error'] === UPLOAD_ERR_OK) {
         $extension = strtolower(pathinfo($_FILES['image']['name'], PATHINFO_EXTENSION));
         $extensions_valides = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
@@ -51,7 +45,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 
-    // Insertion en base de données
     if (empty($erreurs)) {
         try {
             $stmt = $pdo->prepare("
@@ -73,7 +66,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
-// Récupération des catégories pour le select
 $categories = $pdo->query("SELECT id, nom FROM categories ORDER BY nom ASC")->fetchAll();
 ?>
 
@@ -84,7 +76,6 @@ $categories = $pdo->query("SELECT id, nom FROM categories ORDER BY nom ASC")->fe
     <title>Ajouter un article</title>
     <link rel="stylesheet" href="/Site_Actu_Dynamique/css/style.css">
     <style>
-        /* Correction immédiate pour les images trop grosses si elles sont affichées ici */
         .img-preview {
             max-width: 100%;
             height: auto;
