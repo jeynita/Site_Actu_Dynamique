@@ -22,7 +22,7 @@ $archives = $stmt->fetchAll();
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <title>Corbeille - ESP Actu</title>
+    <title>Corbeille - Senegal Actu</title>
     <link rel="stylesheet" href="/Site_Actu_Dynamique/css/style.css">
 </head>
 <body>
@@ -60,8 +60,8 @@ $archives = $stmt->fetchAll();
                                 Restaurer
                             </a>
                             <a href="supprimer_definitivement.php?id=<?= $a['id'] ?>" class="btn-delete" 
-                               onclick="return confirm('Attention : cette action est irréversible. Supprimer définitivement ?')">
-                                Détruire
+                            onclick="return confirm('Attention : cette action est irréversible. Supprimer définitivement ?')">
+                                Supprimer
                             </a>
                         </div>
                     </td>

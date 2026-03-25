@@ -20,7 +20,7 @@ $categories = $stmt->fetchAll();
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <title>Gestion des Catégories - ESP</title>
+    <title>Gestion des Catégories </title>
     <link rel="stylesheet" href="/Site_Actu_Dynamique/css/style.css">
 </head>
 <body>
@@ -59,7 +59,7 @@ $categories = $stmt->fetchAll();
                         
                         <?php if ($c['nb_articles'] == 0): ?>
                             <a href="supprimer.php?id=<?= $c['id'] ?>" class="btn-delete" 
-                               onclick="return confirm('Supprimer cette catégorie ?')">Supprimer</a>
+                            onclick="return confirm('Supprimer cette catégorie ?')">Supprimer</a>
                         <?php else: ?>
                             <span style="color: #9ca3af; font-size: 0.8rem; font-style: italic;">(Non vide)</span>
                         <?php endif; ?>

@@ -6,7 +6,7 @@ $pdo = getPDO();
 
 $id_cat = (int)($_GET['id'] ?? 0);
 
-$par_page = 6; // Aligné sur 6 pour la grille (3x2)
+$par_page = 6;
 $page_courante = max(1, (int)($_GET['page'] ?? 1));
 $offset = ($page_courante - 1) * $par_page;
 
@@ -19,14 +19,12 @@ if (!$categorie) {
     exit;
 }
 
-// Correction : On ne compte que les articles non supprimés
 $stmt = $pdo->prepare('SELECT COUNT(*) FROM articles WHERE id_categorie = :id_cat AND est_supprime = 0');
 $stmt->execute([':id_cat' => $id_cat]);
 $total = (int)$stmt->fetchColumn();
 
 $nb_pages = (int)ceil($total / $par_page);
 
-// Ajout de a.image et a.id_categorie pour le badge
 $stmt = $pdo->prepare(
     'SELECT a.id, a.titre, a.description_courte, a.date_publication, a.image, a.id_categorie,
             c.nom AS nom_categorie,
@@ -46,7 +44,6 @@ $stmt->execute();
 
 $articles = $stmt->fetchAll();
 
-// Récupération des catégories avec le compte pour les "Pills"
 $categories = $pdo->query(
     'SELECT c.id, c.nom, COUNT(a.id) as total_articles
      FROM categories c

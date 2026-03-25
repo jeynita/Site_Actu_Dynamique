@@ -4,18 +4,28 @@ require_once __DIR__ . '/../config/session.php';
 autoriser(['editeur', 'administrateur']);
 $pdo = getPDO(); $id = (int)($_GET['id'] ?? 0);
 $stmt = $pdo->prepare('SELECT * FROM categories WHERE id = :id');
-$stmt->execute([':id' => $id]); $cat = $stmt->fetch();
-if (!$cat) { header('Location: liste.php'); exit; }
-$erreurs = []; $nom = $cat['nom'];
+$stmt->execute([':id' => $id]); 
+
+$cat = $stmt->fetch();
+if (!$cat) { 
+    header('Location: liste.php'); 
+    exit; 
+    }
+$erreurs = []; 
+$nom = $cat['nom'];
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+
 $nom = trim($_POST['nom'] ?? '');
+
 if (empty($nom)) $erreurs[] = 'Le nom est obligatoire.';
 if (empty($erreurs)) {
 $stmt = $pdo->prepare('UPDATE categories SET nom = :nom WHERE id = :id');
 $stmt->execute([':nom' => $nom, ':id' => $id]);
-header('Location: liste.php'); exit;
+header('Location: liste.php'); 
+exit;
 }
 }
+
 ?>
 <!DOCTYPE html>
 <html lang="fr">

@@ -1,0 +1,2824 @@
+
+C:\xampp\htdocs\Site_Actu_Dynamique>(echo.   & echo ==========================================   & echo FICHIER : C:\xampp\htdocs\Site_Actu_Dynamique\accueil.php   & echo ==========================================   & type "C:\xampp\htdocs\Site_Actu_Dynamique\accueil.php" ) 
+ 
+========================================== 
+FICHIER : C:\xampp\htdocs\Site_Actu_Dynamique\accueil.php 
+========================================== 
+<?php
+require_once __DIR__ . '/config/db.php';
+require_once __DIR__ . '/config/session.php';
+
+$pdo           = getPDO();
+$par_page      = 6; 
+$page_courante = max(1, (int)($_GET['page'] ?? 1));
+$offset        = ($page_courante - 1) * $par_page;
+
+$total    = (int)$pdo->query('SELECT COUNT(*) FROM articles WHERE est_supprime = 0')->fetchColumn();
+$nb_pages = (int)ceil($total / $par_page);
+
+// 1. Requête pour récupérer les articles de la page
+$stmt = $pdo->prepare(
+    'SELECT a.id, a.titre, a.description_courte, a.date_publication, a.image,
+            c.nom AS categorie, c.id AS id_categorie,
+            CONCAT(u.prenom, " ", u.nom) AS auteur
+     FROM articles a
+     JOIN categories c ON a.id_categorie = c.id
+     JOIN utilisateurs u ON a.id_auteur = u.id
+     WHERE a.est_supprime = 0
+     ORDER BY a.date_publication DESC
+     LIMIT :limite OFFSET :offset'
+);
+$stmt->bindValue(':limite', $par_page, PDO::PARAM_INT);
+$stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
+$stmt->execute();
+$articles = $stmt->fetchAll();
+
+// 2. ISOLER L'ARTICLE "À LA UNE" (Seulement sur la page 1)
+$article_une = null;
+if ($page_courante === 1 && !empty($articles)) {
+    $article_une = array_shift($articles); // On retire le premier pour l'afficher en haut
+}
+
+$categories = $pdo->query(
+    'SELECT c.id, c.nom, COUNT(a.id) as total_articles
+     FROM categories c
+     LEFT JOIN articles a ON a.id_categorie = c.id AND a.est_supprime = 0
+     GROUP BY c.id, c.nom
+     ORDER BY c.nom'
+)->fetchAll();
+?>
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Accueil — XIBAAR YI</title>
+    <link rel="stylesheet" href="/Site_Actu_Dynamique/css/style.css">
+</head>
+<body>
+
+<?php include __DIR__ . '/entete.php'; ?>
+<?php include __DIR__ . '/menu.php'; ?>
+
+<main class="container">
+
+    <form action="/Site_Actu_Dynamique/articles/recherche.php" method="GET" class="barre-recherche">
+        <input type="text" name="q" placeholder="Rechercher un article..." required>
+        <button type="submit">Rechercher</button>
+    </form>
+
+    <div class="filter-wrapper">
+        <span class="filter-label">Explorer par catégorie :</span>
+        <div class="filter-group">
+            <a href="/Site_Actu_Dynamique/accueil.php" class="filter-pill <?= !isset($_GET['id']) ? 'active' : '' ?>">Toutes</a>
+            <?php foreach ($categories as $cat): ?>
+                <?php if ($cat['total_articles'] > 0): ?>
+                    <a href="/Site_Actu_Dynamique/articles/par_categorie.php?id=<?= $cat['id'] ?>" 
+                       class="filter-pill <?= (isset($_GET['id']) && $_GET['id'] == $cat['id']) ? 'active' : '' ?>">
+                        <?= htmlspecialchars($cat['nom']) ?>
+                        <span class="pill-count"><?= $cat['total_articles'] ?></span>
+                    </a>
+                <?php endif; ?>
+            <?php endforeach; ?>
+        </div>
+    </div>
+
+    <?php if ($article_une): ?>
+        <section class="main-featured">
+            <div class="featured-badge">À LA UNE</div>
+            <div class="featured-flex">
+                <div class="featured-img">
+                    <?php if (!empty($article_une['image'])): ?>
+                        <img src="/Site_Actu_Dynamique/uploads/<?= htmlspecialchars($article_une['image']) ?>" alt="Image à la une">
+                    <?php else: ?>
+                        <div class="image-placeholder">XIBAAR YI</div>
+                    <?php endif; ?>
+                </div>
+                <div class="featured-text">
+                    <span class="cat-tag"><?= htmlspecialchars($article_une['categorie']) ?></span>
+                    <h1><?= htmlspecialchars($article_une['titre']) ?></h1>
+                    <p><?= htmlspecialchars(mb_strimwidth($article_une['description_courte'], 0, 180, "...")) ?></p>
+                    <div class="card-meta">
+                        <span>Par <strong><?= htmlspecialchars($article_une['auteur']) ?></strong></span>
+                        <time><?= date('d/m/Y', strtotime($article_une['date_publication'])) ?></time>
+                    </div>
+                    <a href="/Site_Actu_Dynamique/articles/detail.php?id=<?= $article_une['id'] ?>" class="btn-primary">Lire l'article</a>
+                </div>
+            </div>
+        </section>
+    <?php endif; ?>
+
+    <h1>Dernières actualités</h1>
+
+    <?php if (empty($articles) && !$article_une): ?>
+        <p class="vide">Aucun article disponible pour le moment.</p>
+    <?php endif; ?>
+
+    <div class="articles-grid">
+        <?php foreach ($articles as $a): ?>
+            <article class="card">
+                <div class="card-image">
+                    <?php if (!empty($a['image'])): ?>
+                        <img src="/Site_Actu_Dynamique/uploads/<?= htmlspecialchars($a['image']) ?>" alt="<?= htmlspecialchars($a['titre']) ?>">
+                    <?php else: ?>
+                        <div class="image-placeholder">XIBAAR YI</div>
+                    <?php endif; ?>
+                    
+                    <a href="/Site_Actu_Dynamique/articles/par_categorie.php?id=<?= $a['id_categorie'] ?>" class="card-badge">
+                        <?= htmlspecialchars($a['categorie']) ?>
+                    </a>
+                </div>
+
+                <div class="card-content">
+                    <h2>
+                        <a href="/Site_Actu_Dynamique/articles/detail.php?id=<?= $a['id'] ?>">
+                            <?= htmlspecialchars(mb_strimwidth($a['titre'], 0, 60, "...")) ?>
+                        </a>
+                    </h2>
+                    <p class="card-excerpt">
+                        <?= htmlspecialchars(mb_strimwidth($a['description_courte'], 0, 100, "...")) ?>
+                    </p>
+                    <footer class="card-meta">
+                        <span>Par <strong><?= htmlspecialchars($a['auteur']) ?></strong></span>
+                        <time><?= date('d/m/Y', strtotime($a['date_publication'])) ?></time>
+                    </footer>
+                </div>
+            </article>
+        <?php endforeach; ?>
+    </div>
+
+    <?php if ($nb_pages > 1): ?>
+        <nav class="pagination">
+            <?php if ($page_courante > 1): ?>
+                <a href="?page=<?= $page_courante - 1 ?>" class="prev">Précédent</a>
+            <?php endif; ?>
+
+            <?php for ($i = 1; $i <= $nb_pages; $i++): ?>
+                <a href="?page=<?= $i ?>" class="<?= $i == $page_courante ? 'active' : '' ?>">
+                    <?= $i ?>
+                </a>
+            <?php endfor; ?>
+
+            <?php if ($page_courante < $nb_pages): ?>
+                <a href="?page=<?= $page_courante + 1 ?>" class="next">Suivant</a>
+            <?php endif; ?>
+        </nav>
+    <?php endif; ?>
+
+</main>
+
+<?php include __DIR__ . '/pied.php'; ?>
+
+</body>
+</html>
+C:\xampp\htdocs\Site_Actu_Dynamique>(echo.   & echo ==========================================   & echo FICHIER : C:\xampp\htdocs\Site_Actu_Dynamique\connexion.php   & echo ==========================================   & type "C:\xampp\htdocs\Site_Actu_Dynamique\connexion.php" ) 
+ 
+========================================== 
+FICHIER : C:\xampp\htdocs\Site_Actu_Dynamique\connexion.php 
+========================================== 
+<?php
+require_once __DIR__ . '/config/db.php';
+require_once __DIR__ . '/config/session.php';
+
+if (estConnecte()) {
+    header('Location: /Site_Actu_Dynamique/accueil.php');
+    exit;
+}
+
+$erreur = '';
+$login  = '';
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $login        = trim($_POST['login'] ?? '');
+    $mot_de_passe = $_POST['mot_de_passe'] ?? '';
+
+    if (empty($login) || empty($mot_de_passe)) {
+        $erreur = 'Veuillez remplir tous les champs.';
+    } else {
+        $pdo  = getPDO();
+        $stmt = $pdo->prepare('SELECT * FROM utilisateurs WHERE login = :login LIMIT 1');
+        $stmt->execute([':login' => $login]);
+        $utilisateur = $stmt->fetch();
+
+        if ($utilisateur && password_verify($mot_de_passe, $utilisateur['mot_de_passe'])) {
+            session_regenerate_id(true);
+            $_SESSION['utilisateur'] = [
+                'id'     => $utilisateur['id'],
+                'nom'    => $utilisateur['nom'],
+                'prenom' => $utilisateur['prenom'],
+                'login'  => $utilisateur['login'],
+                'role'   => $utilisateur['role'],
+            ];
+            header('Location: /Site_Actu_Dynamique/accueil.php');
+            exit;
+        } else {
+            $erreur = 'Login ou mot de passe incorrect.';
+        }
+    }
+}
+?>
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Connexion</title>
+    <link rel="stylesheet" href="/Site_Actu_Dynamique/css/style.css">
+</head>
+<body>
+<?php include __DIR__ . '/entete.php'; ?>
+<?php include __DIR__ . '/menu.php'; ?>
+<main class="container">
+    <div class="form-wrapper">
+        <h1>Connexion</h1>
+        <?php if ($erreur): ?>
+            <div class="alerte erreur"><?= htmlspecialchars($erreur) ?></div>
+        <?php endif; ?>
+        <form id="formConnexion" method="post" novalidate>
+            <div class="champ">
+                <label for="login">Login</label>
+                <input type="text" id="login" name="login"
+                       value="<?= htmlspecialchars($login) ?>"
+                       placeholder="Votre identifiant">
+                <span class="erreur-js" id="erreur-login"></span>
+            </div>
+            <div class="champ">
+                <label for="mot_de_passe">Mot de passe</label>
+                <input type="password" id="mot_de_passe" name="mot_de_passe"
+                       placeholder="Votre mot de passe">
+                <span class="erreur-js" id="erreur-mdp"></span>
+            </div>
+            <button type="submit" class="btn-primaire btn-full">Se connecter</button>
+        </form>
+    </div>
+</main>
+<?php include __DIR__ . '/pied.php'; ?>
+<script>
+document.getElementById('formConnexion').addEventListener('submit', function(e) {
+    let valide = true;
+    document.getElementById('erreur-login').textContent = '';
+    document.getElementById('erreur-mdp').textContent   = '';
+    if (!document.getElementById('login').value.trim()) {
+        document.getElementById('erreur-login').textContent = 'Le login est obligatoire.';
+        valide = false;
+    }
+    if (!document.getElementById('mot_de_passe').value) {
+        document.getElementById('erreur-mdp').textContent = 'Le mot de passe est obligatoire.';
+        valide = false;
+    }
+    if (!valide) e.preventDefault();
+});
+</script>
+</body>
+</html>
+C:\xampp\htdocs\Site_Actu_Dynamique>(echo.   & echo ==========================================   & echo FICHIER : C:\xampp\htdocs\Site_Actu_Dynamique\deconnexion.php   & echo ==========================================   & type "C:\xampp\htdocs\Site_Actu_Dynamique\deconnexion.php" ) 
+ 
+========================================== 
+FICHIER : C:\xampp\htdocs\Site_Actu_Dynamique\deconnexion.php 
+========================================== 
+<?php
+require_once __DIR__ . '/config/session.php';
+
+$_SESSION = [];
+
+if (ini_get('session.use_cookies')) {
+    $params = session_get_cookie_params();
+    setcookie(session_name(), '', time() - 42000,
+        $params['path'], $params['domain'],
+        $params['secure'], $params['httponly']
+    );
+}
+
+session_destroy();
+
+header('Location: /Site_Actu_Dynamique/accueil.php');
+exit;
+C:\xampp\htdocs\Site_Actu_Dynamique>(echo.   & echo ==========================================   & echo FICHIER : C:\xampp\htdocs\Site_Actu_Dynamique\entete.php   & echo ==========================================   & type "C:\xampp\htdocs\Site_Actu_Dynamique\entete.php" ) 
+ 
+========================================== 
+FICHIER : C:\xampp\htdocs\Site_Actu_Dynamique\entete.php 
+========================================== 
+<?php
+$nom_site = "XIBAAR YI";
+?>
+<header class="entete">
+    <div class="container">
+        <div class="logo-groupe">
+            <span class="icone-journal"></span> 
+            
+            <div class="texte-logo">
+                <h1 class="titre-site"><?php echo $nom_site; ?></h1>
+                <p class="slogan-site">
+                    Suivez l'information en temps réel au <strong>SÉNÉGAL</strong> — ESP Dakar
+                </p>
+            </div>
+        </div>
+    </div>
+</header>
+C:\xampp\htdocs\Site_Actu_Dynamique>(echo.   & echo ==========================================   & echo FICHIER : C:\xampp\htdocs\Site_Actu_Dynamique\menu.php   & echo ==========================================   & type "C:\xampp\htdocs\Site_Actu_Dynamique\menu.php" ) 
+ 
+========================================== 
+FICHIER : C:\xampp\htdocs\Site_Actu_Dynamique\menu.php 
+========================================== 
+<?php
+if (session_status() === PHP_SESSION_NONE) session_start();
+
+$root = $_SERVER['DOCUMENT_ROOT'] . '/Site_Actu_Dynamique';
+
+if (file_exists($root . '/config/session.php')) {
+    require_once $root . '/config/session.php';
+}
+if (file_exists($root . '/config/db.php')) {
+    require_once $root . '/config/db.php';
+}
+
+$role = $_SESSION['utilisateur']['role'] ?? 'visiteur';
+
+$nb_archives = 0;
+if ($role === 'editeur' || $role === 'administrateur') {
+    $pdo_menu = getPDO();
+    $nb_archives = $pdo_menu->query("SELECT COUNT(*) FROM articles WHERE est_supprime = 1")->fetchColumn();
+}
+?>
+<nav class="menu">
+    <div class="container">
+        <ul>
+            <li><a href="/Site_Actu_Dynamique/accueil.php">Accueil</a></li>
+            
+            <?php if ($role === 'editeur' || $role === 'administrateur'): ?>
+                <li><a href="/Site_Actu_Dynamique/articles/liste.php">Mes articles</a></li>
+                <li><a href="/Site_Actu_Dynamique/articles/ajouter.php">+ Article</a></li>
+                <li><a href="/Site_Actu_Dynamique/categories/liste.php">Catégories</a></li>
+                
+                <li>
+                    <a href="/Site_Actu_Dynamique/articles/corbeille.php" style="color: #e94560;">
+                        Corbeille 
+                        <?php if ($nb_archives > 0): ?>
+                            <span style="background:#e94560; color:#fff; padding:2px 6px; border-radius:10px; font-size:0.7rem;">
+                                <?= $nb_archives ?>
+                            </span>
+                        <?php endif; ?>
+                    </a>
+                </li>
+            <?php endif; ?>
+
+            <?php if ($role === 'administrateur'): ?>
+                <li><a href="/Site_Actu_Dynamique/utilisateurs/liste.php">Utilisateurs</a></li>
+            <?php endif; ?>
+        </ul>
+
+        <div class="menu-droite">
+            <?php if (isset($_SESSION['utilisateur'])): ?>
+                <span class="bienvenue">
+                    <?= htmlspecialchars($_SESSION['utilisateur']['prenom']) ?>
+                    <em>(<?= htmlspecialchars($role) ?>)</em>
+                </span>
+                <a href="/Site_Actu_Dynamique/deconnexion.php" class="btn-deconnexion">Déconnexion</a>
+            <?php else: ?>
+                <a href="/Site_Actu_Dynamique/connexion.php" class="btn-connexion">Connexion</a>
+            <?php endif; ?>
+        </div>
+    </div>
+</nav>
+C:\xampp\htdocs\Site_Actu_Dynamique>(echo.   & echo ==========================================   & echo FICHIER : C:\xampp\htdocs\Site_Actu_Dynamique\pied.php   & echo ==========================================   & type "C:\xampp\htdocs\Site_Actu_Dynamique\pied.php" ) 
+ 
+========================================== 
+FICHIER : C:\xampp\htdocs\Site_Actu_Dynamique\pied.php 
+========================================== 
+<footer class="pied-page">
+    <div class="container">
+        <div class="footer-grid">
+            <div class="footer-section">
+                <h3>XIBAAR YI</h3>
+                <p>Votre source d'information de référence, éditée par le Département Génie Informatique de l'ESP Dakar.</p>
+            </div>
+
+            <div class="footer-section">
+                <ul class="footer-links">
+                    
+                    <li><a href="#">XIBAAR@info.sn</a></li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="footer-bottom">
+            <p>&copy; <?= date('Y') ?> <strong>XIBAAR YI</strong>. Tous droits réservés.</p>
+            <p class="footer-note">L'exactitude de l'information est notre priorité. Toute reproduction est soumise à autorisation.</p>
+        </div>
+    </div>
+</footer>
+</footer>
+C:\xampp\htdocs\Site_Actu_Dynamique>(echo.   & echo ==========================================   & echo FICHIER : C:\xampp\htdocs\Site_Actu_Dynamique\database.sql   & echo ==========================================   & type "C:\xampp\htdocs\Site_Actu_Dynamique\database.sql" ) 
+ 
+========================================== 
+FICHIER : C:\xampp\htdocs\Site_Actu_Dynamique\database.sql 
+========================================== 
+
+
+CREATE DATABASE IF NOT EXISTS site_actualite
+    CHARACTER SET utf8mb4
+    COLLATE utf8mb4_unicode_ci;
+
+USE site_actualite;
+
+
+CREATE TABLE IF NOT EXISTS categories (
+    id  INT AUTO_INCREMENT PRIMARY KEY,
+    nom VARCHAR(100) NOT NULL UNIQUE
+) ENGINE=InnoDB;
+
+
+CREATE TABLE IF NOT EXISTS utilisateurs (
+    id           INT AUTO_INCREMENT PRIMARY KEY,
+    nom          VARCHAR(100) NOT NULL,
+    prenom       VARCHAR(100) NOT NULL,
+    login        VARCHAR(100) NOT NULL UNIQUE,
+    mot_de_passe VARCHAR(255) NOT NULL,
+    role         ENUM('editeur','administrateur') NOT NULL DEFAULT 'editeur',
+    created_at   TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB;
+
+CREATE TABLE IF NOT EXISTS articles (
+    id                 INT AUTO_INCREMENT PRIMARY KEY,
+    titre              VARCHAR(255) NOT NULL,
+    description_courte TEXT NOT NULL,
+    contenu            LONGTEXT NOT NULL,
+    image              VARCHAR(255) DEFAULT NULL, 
+    date_publication   DATETIME DEFAULT CURRENT_TIMESTAMP,
+    id_categorie       INT NOT NULL,
+    id_auteur          INT NOT NULL,
+    CONSTRAINT fk_categorie FOREIGN KEY (id_categorie) REFERENCES categories(id) ON DELETE RESTRICT,
+    CONSTRAINT fk_auteur    FOREIGN KEY (id_auteur)    REFERENCES utilisateurs(id) ON DELETE RESTRICT
+) ENGINE=InnoDB;
+
+
+SET SQL_MODE = "NO_AUTO_VALUE_ON_ZERO";
+START TRANSACTION;
+SET time_zone = "+00:00";
+
+
+
+
+CREATE TABLE `articles` (
+  `id` int(11) NOT NULL,
+  `titre` varchar(255) NOT NULL,
+  `description_courte` text NOT NULL,
+  `contenu` longtext NOT NULL,
+  `date_publication` datetime DEFAULT current_timestamp(),
+  `id_categorie` int(11) NOT NULL,
+  `id_auteur` int(11) NOT NULL,
+  `image` varchar(255) DEFAULT NULL,
+  `est_supprime` tinyint(1) DEFAULT 0
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+
+
+INSERT INTO `articles` (`id`, `titre`, `description_courte`, `contenu`, `date_publication`, `id_categorie`, `id_auteur`, `image`, `est_supprime`) VALUES
+(8, 'Transparence et gouvernance des ressources extractives : Le Sénégal noté “Très bien”', 'Transparence et gouvernance des ressources extractives : Le Sénégal noté “Très bien”', '“Très bon”. C’est le score qui a été décerné au Sénégal au bout de son troisième processus de validation, à l’aune de la mise en œuvre de la Norme ITIE 2023. Le pays a obtenu la note de 89 sur 10, qui conforte son leadership mondial dans le domaine. \r\n\r\n“Avec 89 sur 100, le Sénégal maintient son leadership à travers le monde et démontre que le niveau de transparence est très satisfaisant, que non seulement la norme ITIE est pertinente au Sénégal, mais qu\'il y a une bonne inclusivité dans la gestion des ressources naturelles”, a expliqué Taddée Adiouma Seck.\r\n\r\nLe Secrétaire Permanent du Comité national de l’Initiative pour la transparence dans les industries extractives (Itie-Sénégal) s’exprimait ce mardi, lors d’un point de presse sur la présentation des résultats du processus de validation. \r\n\r\nEn effet, pour la composante “résultat et impact de la mise en œuvre”, le Sénégal a été noté 92,5 sur 100. Pour les aspects liés à “l\'engagement des parties prenantes”, le pays a obtenu 87,5 sur 100. Quant aux aspects liés à la transparence, une note de 81 lui a été décernée.\r\n\r\n“Sur presque toutes les composantes, nous sommes vraiment à un niveau très élevé, ou à une performance très élevée. Les déterminants qui nous ont valu ce score, c\'est globalement le plan de travail. La manière dont le Sénégal réalise son plan de travail est très appréciée”, assure M. Seck\r\n\r\nMais, le Sénégal n’aura pas obtenu de bons scores partout. Il a été moins bien noté pour les transferts infranationaux. M. Seck souligne que “c\'est le grand défi de gouvernance du Sénégal, puisque les dispositifs juridiques mis en œuvre depuis plus d\'une décennie ne sont pas fonctionnels”. A ce niveau, le Sénégal a obtenu la note de 50 sur 100.\r\n\r\nEn effet, le pays a mis en place des outils de redistribution de la rente minière à travers le Fonds de péréquation et d\'appui et le Fonds d\'appui au développement local. Mais, ces outils peinent à être appliqués depuis plus d\'une décennie.\r\n\r\n“Pour le Fonds de péréquation, malgré les arrêtés de redistribution, les transferts ne sont pas effectifs dans la réalité. Il n\'y a eu qu\'un seul transfert en 2020”, regrette M. Seck.\r\n\r\nPrésident du comité national de l’ITIE Sénégal, Thialy Faye a salué une performance globalement remarquable. Celle-ci traduit, dit-il, l’ampleur des progrès réalisés par notre pays dans la gouvernance du secteur extractif. \r\n\r\nMais, il a tenu à souligner que “ce score de 89 sur 100 ne constitue pas une finalité, il représente plutôt une base solide sur laquelle nous devons continuer de bâtir”.', '2026-03-24 19:22:53', 9, 1, 'art_69c2e48dbf7d64.66170024.jpeg', 0),
+(9, 'Cheikh Tidiane Dièye sur les révélations du Times : « Aucun emprunt n’a été caché »', 'Le sujet est sur toutes les lèvres. Selon une enquête publiée ce 23 mars par le quotidien britannique Financial Times, le Sénégal aurait secrètement contracté des emprunts s\'élevant à 650 millions d\'euros auprès d\'institutions internationales.', 'Le sujet est sur toutes les lèvres. Selon une enquête publiée ce 23 mars par le quotidien britannique Financial Times, le Sénégal aurait secrètement contracté des emprunts s\'élevant à 650 millions d\'euros auprès d\'institutions internationales. Une dette jugée « cachée » contractée dans des conditions « opaques » (sans informer le Parlement) via le mécanisme des Total Return Swaps avec l\'Africa Finance Corporation et First Abu Dhabi Bank, qui aurait servi à éviter un défaut de paiement imminent.\r\n\r\nPrenant la balle au bond, le ministre de l’hydraulique et de l’assainissement, Cheikh Tidiane Dièye pointe un article « tendancieux » et tire à boulets rouges sur les opposants qui veulent en faire un scandale.\r\n\r\n« Hier, certains annonçaient que le Sénégal ferait défaut et ne pourrait pas honorer ses engagements. Le Sénégal a payé. À temps. Et avec la manière », écrit-il dans un post sur le réseau social X.\r\n\r\n« Aujourd’hui, les mêmes s’accrochent à un article déséquilibré, confus et largement tendancieux du Financial Times pour reconnaître, certes, que le Sénégal a honoré ses engagements, mais en insinuant qu’il l’aurait fait grâce à des emprunts non déclarés au marché ou au FMI. Rien que ça », ajoute Cheikh Tidiane Dièye, louant « la résilience » et la « créativité hors norme » dont le gouvernement a fait preuve face à « une dette étouffante héritée du régime précédent ».\r\n\r\nCheikh Tidiane Dièye se veut clair sur le sujet : « aucun emprunt n’a été caché ». À l’en croire, « tout a été programmé dans la Stratégie de gestion de la dette à moyen termes (SDMT), inscrite dans les lois de finances et approuvée par l’Assemblée nationale ».\r\n\r\nD’après le ministre, les opérations de marché réalisées « figurent dans le plan de financement 2025 », même si le Times et certains acteurs politiques sénégalais dont des députés soutiennent le contraire. « Les instruments financiers utilisés, notamment les Total Return Swaps, ainsi que les mécanismes à travers lesquels ils opèrent, ont été portés à la connaissance des partenaires financiers du Sénégal, en particulier le Fonds monétaire international (FMI) », souligne-t-il, s’inscrivant en faux contre les allégations du Times.', '2026-03-24 19:31:43', 9, 4, 'art_69c2e69f1fd8d5.99374627.jpg', 0),
+(10, 'Mosquée omarienne : le problème des bourses des étudiants s’invite dans le sermon de la korité', 'Mosquée omarienne : le problème des bourses des étudiants s’invite dans le sermon de la korité', 'Les violents affrontements entre étudiants et forces de l’ordre pour des bourses non payées, qui ont conduit à la mort du pensionnaire de la faculté de médecine Abdoulaye Bâ, se sont invités dans le sermon de korité de l’imam de la mosquée orienne. «Nous avons tous été étudiants et nous mesurons à sa juste valeur ce que la bourse représente pour un étudiant. Si la bourse n’est pas payée, ils ont des problèmes», concède Thierno Seydou Mountaga Tall, frère du khalife, Thierno Madani, dans des propos rapportés par L’Observateur.\r\n\r\nMais s’il affiche sa compassion face à la situation des boursiers des universités publiques, le religieux leur recommande d’opter pour des négociations apaisées en cas de frictions avec les autorités. «Les problèmes liés au paiement des bourses peuvent être réglés sans affrontement entre forces de l’ordre et étudiants. Il faut privilégier le dialogue : à chaque fois qu’il y a contestation, je conseille aux étudiants d’accepter de se mettre autour d’une table avec l’État», martèle Thierno Seydou Mountaga Tall.', '2026-03-24 19:34:47', 9, 4, 'art_69c2e757562524.72343320.jpeg', 0),
+(11, 'Décision du jury d’appel de la CAF : Le Sénégal a officiellement saisi le TAS (média)', 'La Fédération sénégalaise de football (FSF) est passée à l’offensive. L’instance dirigeante du football sénégalais a officiellement saisi le Tribunal arbitral du sport (TAS) ce mardi afin de contester le retrait du titre de champion d’Afrique.', 'La Fédération sénégalaise de football (FSF) est passée à l’offensive. L’instance dirigeante du football sénégalais a officiellement saisi le Tribunal arbitral du sport (TAS) ce mardi afin de contester le retrait du titre de champion d’Afrique.\r\n\r\nAlors que le Sénégal s’était imposé sur le terrain face au Maroc (1-0) lors de la finale de la CAN, la FSF a déposé son recours auprès du TAS à la suite de la décision de la Confédération africaine de football (CAF) de destituer les Lions sur tapis vert (0-3), rapporte le site Foot mercato. Une issue controversée qui continue de susciter de vives réactions.\r\n\r\nLe Sénégal espère ainsi obtenir l’annulation de cette décision et faire valoir le résultat acquis sur le terrain.\r\n\r\nL’affaire est désormais entre les mains du TAS, appelé à trancher ce litige qui agite le monde du football.', '2026-03-24 19:38:19', 13, 4, 'art_69c2e82b99d607.75436622.webp', 0),
+(12, 'Départ de son entraîneur Souleymane Diallo : Le Jaraaf opté pour le duo Ciré Dia-Demba Ba pour assurer l’intérim', 'Le Jaraaf de Dakar tourne une nouvelle page.', 'Le Jaraaf de Dakar tourne une nouvelle page. À la suite de la nomination de son entraîneur Souleymane Diallo au poste de directeur technique national du football sénégalais, le club de la Médina a rapidement désigné une solution en interne pour assurer la continuité. Les dirigeants ont opté pour un duo bien connu de la maison : l’ancien buteur Ciré Dia et Demba Ba. Les deux techniciens auront pour mission de conduire l’équipe en intérim, dans un contexte sportif délicat.\r\n\r\nActuel 9e de Ligue 1, le Jaraaf traverse une saison compliquée, marquée notamment par une absence de victoire depuis le début de l’année 2026. Un défi de taille attend donc le tandem appelé à redresser la dynamique du club le plus titré du Sénégal.\r\n\r\nMalgré ces résultats en demi-teinte, le Jaraaf a tenu à rendre un hommage appuyé à Souleymane Diallo pour le travail accompli durant son passage sur le banc du club de la Médina. Dans un communiqué, le club a salué une nomination méritée.\r\n\r\n« Le club adresse ses plus chaleureuses félicitations à son entraîneur, Souleymane Diallo, pour sa nomination au poste de directeur technique national. Une reconnaissance du travail, de l’engagement et de la compétence d’un homme qui a toujours œuvré pour le développement du football. Nous lui souhaitons plein succès dans cette nouvelle mission au service du football national ».\r\n\r\nUne nouvelle ère s’ouvre donc pour le Jaraaf, avec l’espoir de relancer la machine sous la houlette de ce duo intérimaire.', '2026-03-24 19:41:32', 13, 3, 'art_69c2e8ece81e83.11169873.jpg', 0),
+(13, 'Finale Sénégal - Maroc : L\'argument totalement lunaire brandi par un juriste sur la presse marocaine', 'Finale Sénégal - Maroc : L\'argument totalement lunaire brandi par un juriste sur la presse marocaine', 'Sur la presse marocaine, c\'est la réjouissance, après la décision de la Confédération africaine de football de leur accorder le titre de la CAN 2025 sur tapis vert, aux dépens du Sénégal. Sur Medias24, l\'un des principaux sites d\'informations marocains, Reda Belhoucine, président du Tribunal de première instance de Ouezzane (Nord-ouest), a tenté de justifier cette décision controversée de l\'instance dirigeante du foot africain.\r\n\r\nDans un texte, le juriste a mis en avant un argument totalement lunaire pour expliquer la défaite des Marocains face aux Sénégalais le 18 janvier dernier. Selon Belhoucine, les Lions de la Téranga ont exercé une pression psychologique énorme sur l\'arbitre Jean-Jacques Ndala telle que le but de la victoire, inscrit par Pape Guèye, aurait dû être refusé... pour une faute dit-il de Chérif Ndiaye sur le défenseur marocain Jawad El Yamiq.\r\n\r\n\"Cet abandon temporaire a placé le corps arbitral dans une posture d\'une extrême vulnérabilité psychologique, altérant l\'environnement de l\'arbitre qui, tiraillé par la menace implicite d\'un arrêt définitif de la finale, a vu sa priorité glisser de l\'application stricte des lois du jeu vers la sauvegarde absolue de l\'événement. Cette forme d\'intimidation environnementale a trouvé son illustration la plus probante lors de la validation du but sénégalais, séquence durant laquelle l\'arbitre, manifestement tétanisé par l\'appréhension d\'un nouvel incident, a omis de sanctionner une faute d\'attaque flagrante commise par le joueur sénégalais numéro 12, lequel a délibérément bousculé un défenseur marocain pour s\'ouvrir la trajectoire de tir\", écrit Belhoucine sur Medias24.\r\n\r\nLe président du tribunal de première instance de Ouezzane d\'ajouter : \"En tirant ainsi un profit direct et décisif de sa propre irrégularité, l\'attaquant a violé non seulement la Loi 12 de l\'IFAB - qui invalide formellement toute action où un joueur bouscule son adversaire pour le déséquilibrer ou dégager l\'axe du but -mais également le principe universel selon lequel nul ne peut se prévaloir de sa propre turpitude, démontrant de facto que le mutisme du sifflet arbitral découlait d\'une liberté d\'appréciation anéantie par la contrainte psychologique du retrait soi-disant temporaire\". Incroyable !', '2026-03-24 19:43:38', 13, 3, 'art_69c2e96a3b1207.83044584.jpg', 0),
+(14, 'Médina Yoro Foulah : 330 litres d\'essence saisis par la gendarmerie, le propriétaire prend la fuite', 'Médina Yoro Foulah : 330 litres d\'essence saisis par la gendarmerie, le propriétaire prend la fuite', 'Dans le cadre de sa mission de sécurisation, la Brigade de Proximité de Médina Yoro Foulah a procédé à une importante saisie de carburant dans la nuit du 20 mars 2026.\r\nVers 23 heures, les gendarmes ont intercepté onze bidons de 30 litres d\'essence chacun, soit un total de 330 litres, au village de Méo-Ndiobène, commune de Niaming.\r\n\r\nSelon le colonel Ibrahima Ndiaye, le propriétaire a pris la fuite avant l\'arrivée des forces de l\'ordre. Les recherches se poursuivent pour l\'identifier et l\'interpeller.\r\n\r\nLa Gendarmerie nationale rappelle que son centre d\'appel est accessible gratuitement aux numéros verts 123 et 800 00 20 20 pour tout renseignement utile.', '2026-03-24 19:46:13', 11, 3, 'art_69c2ea05474448.65891909.jpg', 0),
+(15, '\"Il ne sort jamais de sa cellule\" : Les confidences d\'un ex-codétenu sur Pape Cheikh Diallo !', 'Un ancien détenu de la Maison d’arrêt de Rebeuss a brisé le silence pour livrer des détails inédits sur le quotidien carcéral de l\'animateur Pape Cheikh Diallo, actuellement sous les verrous.', 'Un ancien détenu de la Maison d’arrêt de Rebeuss a brisé le silence pour livrer des détails inédits sur le quotidien carcéral de l\'animateur Pape Cheikh Diallo, actuellement sous les verrous.\r\n\r\nL’ex-pensionnaire de Rebeuss, prénommé Latyr, a tenu à démentir formellement les rumeurs persistantes concernant une prétendue « nouvelle vie » de l\'animateur, lequel aurait dirigé des prières durant le mois de Ramadan.\r\n\r\n« Comment pouvez-vous croire que des musulmans acceptent d’être guidés par un homosexuel ? Pape Cheikh Diallo ne dirigera jamais une prière en prison », a-t-il tranché avec fermeté.\r\n\r\nUn quotidien marqué par l\'isolement\r\n\r\nSelon ce témoin oculaire, l\'homme de média vivrait dans un isolement quasi total pour éviter les regards et les confrontations. « D’ailleurs, l’homme de médias n’ose même pas sortir dans la cour pour profiter des promenades. Par pudeur, il reste tout le temps dans sa chambre. Ses seules sorties se font pour aller à l’infirmerie », rapporte Latyr.\r\n\r\nUn appel surprenant à l\'administration pénitentiaire\r\n\r\nPlus troublant encore, l\'ancien détenu a interpellé l\'administration pénitentiaire sur un besoin spécifique lié, selon ses dires, à la condition physique de certains détenus. Latyr a invité les autorités à se ravitailler en couches pour adultes pour pallier des problèmes d\'incontinence chez les homosexuels incarcérés, affirmant de manière directe que « ces derniers en ont réellement besoin ».', '2026-03-24 19:51:07', 11, 5, 'art_69c2eb2b7cb948.49565605.jpg', 0),
+(16, 'Clash : Ngaaka Blindé relance la guerre contre Dip et Akhlou Brick, la toile s\'enflamme', 'Clash : Ngaaka Blindé relance la guerre contre Dip et Akhlou Brick, la toile s\'enflamme', 'Dans son nouveau freestyle, Ngaaka Blindé, le rappeur originaire de Guédiawaye, n’a pas mâché ses mots. Avec la punchline percutante « Mbour ak Grand-Yoff samay petit lagn », il s’attaque directement à ses rivaux, affirmant sans détour sa supériorité artistique. Une manière de se positionner comme le \"boss\" face à Dip Doundou Guiss (originaire de Grand-Yoff) et Akhlou Brick Paradise (basé à Mbour).\r\n\r\nLa réaction de Dip Doundou Guiss ne s’est pas fait attendre. Par un commentaire acerbe — « Boudé genrou couplet yi, ragal na 100 mil sakh douñ niou ko fey » —, il répond sèchement en remettant en cause la valeur marchande et lyrique des textes de Ngaaka Blindé. Une réplique piquante qui prouve que les tensions entre les deux ténors sont loin d\'être apaisées.', '2026-03-24 22:28:52', 17, 5, 'art_69c310243e5c70.77607395.jpg', 0),
+(17, 'Carnet rose ou buzz ? Mia Guissé affole la toile avec un mystérieux « Madame S »', 'La chanteuse Mia Guissé a semé le doute et enflammé la toile après une publication intrigante partagée sur sa page Facebook.', 'La chanteuse Mia Guissé a semé le doute et enflammé la toile après une publication intrigante partagée sur sa page Facebook.\r\n\r\nDans un post bref mais lourd de sens, l’artiste a écrit : « Mrs S… Mbeguel day yokou tarr, dagay glow sa kanam am léer. » Cette déclaration était accompagnée d’émojis \"cœur\" et \"bague\", généralement associés à un mariage ou à des fiançailles.\r\n\r\nL’expression « Mrs S », littéralement « Madame S », a particulièrement attiré l’attention des internautes, laissant penser que la chanteuse aurait officiellement changé de statut matrimonial. Quant à la phrase en wolof, elle évoque un amour si fort qu’il illumine le visage, renforçant l’idée d’un heureux événement.\r\n\r\nTrès rapidement, les réactions se sont multipliées sous la publication. Entre messages de félicitations, prières et vœux de bonheur, de nombreux fans et internautes semblent avoir interprété ce message comme l’annonce d\'une union officielle. Cependant, à l’heure actuelle, aucune déclaration supplémentaire n’est venue confirmer clairement l’information, ni révéler l’identité de l’éventuel époux.\r\n\r\nAnnonce personnelle ou coup de communication ?\r\n\r\nConnue pour son sens aigu de la communication et sa proximité avec son public, Mia Guissé pourrait aussi réserver une surprise d\'une autre nature : nouveau projet musical, clip imminent ou concept artistique autour de l’amour ? L’artiste n’en est d\'ailleurs pas à son premier message énigmatique.\r\nEn attendant une confirmation formelle, une chose est sûre : la publication a réussi son pari en captivant l’attention et en faisant vibrer la blogosphère sénégalaise.', '2026-03-24 22:32:07', 17, 5, 'art_69c310e7e706d8.27775330.png', 0),
+(18, 'Sénégal : Le Ministère de la Santé lance une campagne de recrutement, Voici les détails (Photo)', 'Le ministère de la Santé et de l’Hygiène publique a lancé un appel à candidatures dans le cadre du renforcement du Système national d’information sanitaire ...', 'Accueil • Arts de Vivre • Santé •\r\n\r\nSénégal : Le Ministère de la Santé lance une campagne de recrutement, Voici les détails (Photo)\r\nPublié le 24/12/2025 à 20:22 - Mis à jour le 24/12/2025 à 20:22\r\n Lire dans l\'application\r\nPartager\r\n91\r\n\r\n Copier le lien\r\nywAAAAAAQABAAACAUwAOw== - Senenews - Actualité au Sénégal, Politique, Économie, Sport\r\nPar \r\nBarry Souleymane\r\n \r\nSuivre\r\nLe ministère de la Santé et de l’Hygiène publique a lancé un appel à candidatures dans le cadre du renforcement du Système national d’information sanitaire (SNIS). Cette initiative vise le recrutement d’agents contractuels pour appuyer la gestion et l’exploitation des données sanitaires à l’échelle nationale.\r\n\r\nVoir plus\r\nla Santé\r\nSanté\r\nsanté\r\nSelon le document officiel, les profils recherchés doivent être titulaires d’un diplôme de niveau Licence ou Master dans les domaines de la santé publique, de la santé communautaire, des statistiques, de l’informatique ou du data management. Les candidats doivent être de nationalité sénégalaise et justifier d’au moins une année d’expérience en gestion de données sanitaires ou dans un service de santé.\r\n\r\nLa maîtrise pratique du logiciel DHIS2 constitue un atout majeur, tout comme une bonne connaissance des outils informatiques tels que Excel, PowerPoint, R ou leurs équivalents. Les postulants devront également avoir une bonne connaissance du système national d’information sanitaire et des outils de rapportage.\r\n\r\nEnfin, le ministère insiste sur des qualités personnelles essentielles, notamment le sens de l’éthique, la rigueur professionnelle et la discrétion.', '2026-03-24 23:38:08', 15, 7, 'art_69c32060286426.72423242.jpg', 0),
+(19, 'Sénégal : Le Ministère de la Santé lance une campagne de recrutement, Voici les détails (Photo)', 'Le ministère de la Santé et de l’Hygiène publique a lancé un appel à candidatures dans le cadre du renforcement du Système national d’information sanitaire ...', 'Selon le document officiel, les profils recherchés doivent être titulaires d’un diplôme de niveau Licence ou Master dans les domaines de la santé publique, de la santé communautaire, des statistiques, de l’informatique ou du data management. Les candidats doivent être de nationalité sénégalaise et justifier d’au moins une année d’expérience en gestion de données sanitaires ou dans un service de santé.\r\n\r\nLa maîtrise pratique du logiciel DHIS2 constitue un atout majeur, tout comme une bonne connaissance des outils informatiques tels que Excel, PowerPoint, R ou leurs équivalents. Les postulants devront également avoir une bonne connaissance du système national d’information sanitaire et des outils de rapportage.\r\n\r\nEnfin, le ministère insiste sur des qualités personnelles essentielles, notamment le sens de l’éthique, la rigueur professionnelle et la discrétion.', '2026-03-24 23:39:05', 15, 7, NULL, 0),
+(20, 'Affaire SOFTCARE : le ministère de la Santé prend une décision ferme, voici le Communiqué', 'Dakar, le 18 décembre 2025 – L’Agence de Régulation Pharmaceutique (ARP) a récemment mené une inspection au sein de l’entreprise SOFTCARE SN COMPANY LIMITED, provoquant ...', 'Dakar, le 18 décembre 2025 – L’Agence de Régulation Pharmaceutique (ARP) a récemment mené une inspection au sein de l’entreprise SOFTCARE SN COMPANY LIMITED, provoquant une vive polémique et de nombreuses interrogations dans l’espace public.\r\n\r\nEn réponse, le Ministère de la Santé et de l’Hygiène publique (MSHP), en sa qualité d’autorité de tutelle, a annoncé qu’une mission conjointe serait diligentée sans délai. Cette opération se fera en collaboration avec le Ministère du Commerce et de l’Industrie, afin de clarifier la situation et de faire toute la lumière sur cette affaire.\r\n\r\nLe MSHP a également rassuré le public, indiquant qu’il communiquerait prochainement des informations précises, vérifiées et conformes à la réalité, dans un souci de transparence et de responsabilité.\r\n\r\nPar ailleurs, le Ministère souligne qu’il prendra toutes les mesures correctives nécessaires, conformément à la législation en vigueur, tout en veillant à respecter les principes de justice et d’équité.\r\nEnfin, le Ministère a réaffirmé son engagement à préserver la santé publique, à garantir la sécurité sanitaire et à assurer une régulation rigoureuse du secteur pharmaceutique, pour le bénéfice de l’ensemble des populations.', '2026-03-24 23:43:08', 15, 7, 'art_69c3218c779c02.97906007.jpeg', 0),
+(21, 'Sénégal: le DAF, un département du ministère de l\'Intérieur, touché par une cyberattaque', 'Après le site des impôts en octobre dernier, cette fois c’est le département de l’automatisation des fichiers (DAF) qui a été touché par une cyberattaque. Cet organisme particulièrement sensible, rattaché au ministère de l’Intérieur permet, entre autres, de délivrer les cartes nationales d’identité.', 'L\'étendue des données piratées est pour l\'heure inconnue mais les spécialistes en cybersécurité sont formels : l\'attaque informatique sur le département de l\'automatisation des fichiers (DAF) est particulièrement grave.\r\n\r\nElle l\'est notamment car ce service rattaché au ministère de l\'Intérieur dirige et sécurise toutes les données biométriques des citoyens sénégalais : les cartes nationales d\'identité, le fichier électoral et la modernisation de l\'état civil. Des données donc particulièrement sensibles. Un groupe tout récemment apparu au début de l\'année et quasi inconnu a revendiqué la cyberattaque. Il a publié sur le darkweb quelques-unes des données piratées.\r\n\r\nSi l\'attaque criminelle ne fait donc pas de doute, ce qui a été rendu public ne permet pas de connaître l\'étendue des dégâts. Le groupe criminel affirme avoir aspiré 139 téraoctets, soit une quantité vertigineuse, de données. Une information impossible à vérifier pour l\'heure sans une investigation numérique musclée.\r\nL\'Afrique, de plus en plus connectée, est un terrain de jeu idéal pour les cybercriminels\r\nAprès une attaque en octobre 2025 sur le site internet des impôts du Sénégal, cette nouvelle intrusion rappelle l\'urgence de prendre des mesures. Sur le continent, une dizaine de pays sont par exemple munis d\'une agence nationale de la cybersécurité.\r\n\r\nSelon Clément Domingo, spécialiste en cybersécurité, « le Sénégal n\'est pas particulièrement vulnérable », mais « la numérisation grandissante » de l\'Afrique entraîne des hausses des attaques informatiques. « Il y a une énorme méconnaissance de nos dirigeants et de la population : on pense qu\'il n\'y a pas de cyberattaques en Afrique. Personne n\'en parle. C\'est un biais où on se dit qu\'il ne se passe rien sur le continent africain. C\'est totalement faux, c\'est même le contraire aujourd\'hui », explique-t-il.\r\n\r\n« L\'Afrique est devenue, depuis quelques mois, le \'\'bac à sable\'\' des cybercriminels. C\'est là où ils testent leurs nouvelles armes. Des États, des entreprises et donc des cybercriminels ont compris que ce taux grandissant de numérisation de l\'Afrique en fait un continent de plus en plus exposé. Et le Sénégal n\'en réchappe pas », insiste Clément Domingo.', '2026-03-24 23:53:09', 18, 6, 'art_69c323e5daa7b5.42070096.jpg', 0),
+(22, 'Une attaque ransomware au cœur de la Dgid, après le vol des ordinateurs au niveau du Trésor', 'Une cyberattaque sans précédent', 'Le Sénégal traverse une crise numérique majeure. La Direction générale des Impôts et domaines (Dgid), institution centrale dans la gestion fiscale du pays, est frappée de plein fouet par une attaque informatique d’une ampleur inédite. Depuis plus d’une semaine, ses logiciels de gestion fiscale et de recouvrement sont totalement paralysés.\r\nLes pirates à l’origine de l’opération, se présentant sous le nom de Black Shrantac, affirment avoir volé 1 Téraoctet (To) de données sensibles et exigent le paiement d’une rançon astronomique de 10 millions d’euros, soit environ 6, 5 milliards de francs Cfa, pour libérer les systèmes et restituer les informations.\r\nCet épisode survient après le vol d’ordinateurs au niveau du Trésor public il y a quelques mois. Deux événements rapprochés qui posent une question inquiétante : sommes-nous face à une offensive coordonnée contre les finances publiques sénégalaises ?\r\nLa cybersécurité : une obligation nationale\r\nIl est urgent de reconnaître que la cybersécurité doit devenir une priorité absolue pour l’Etat et ses agents. Trop souvent perçue comme une contrainte technique réservée aux informaticiens, elle doit être considérée comme une obligation pour tous les fonctionnaires manipulant des données sensibles.\r\nLa réalité est simple : la faille humaine est aujourd’hui la première porte d’entrée des cybercriminels. Un mot de passe trop faible, un clic sur un lien piégé, une connexion à un site non sécurisé… il suffit d’une erreur pour exposer tout un réseau. Dans une administration comme la Dgid, cela revient à mettre en péril les finances de l’Etat et la confiance des citoyens.\r\nQu’est-ce qu’un ransomware ?\r\nPour comprendre la situation, il faut d’abord expliquer ce qu’est un ransomware. Il s’agit d’un logiciel malveillant conçu pour chiffrer les données d’un système informatique et les rendre inaccessibles. Les cybercriminels exigent ensuite le paiement d’une rançon, généralement en cryptomonnaie, en échange de la clé de déchiffrement.\r\nMais les attaques modernes ne s’arrêtent plus là. Les pirates copient aussi les données avant de les verrouiller, puis menacent de les divulguer publiquement en cas de refus de paiement. C’est exactement ce qui est en train de se produire à la Dgid : les pirates affirment détenir 1 To de fichiers fiscaux et administratifs, et menacent de les publier si leurs conditions ne sont pas remplies.\r\nLe groupe Black Shrantac : un acteur du cybercrime organisé\r\nLe groupe Black Shrantac n’est pas un novice. Comme d’autres collectifs spécialisés dans le chantage numérique, il cible en priorité les institutions financières et administratives, là où la pression est maximale et où l’impact d’une paralysie est immédiat.\r\nSelon les premiers éléments, ce groupe serait basé en Europe, ce qui complique l’enquête, et nécessitera une coopération internationale. Leur mode opératoire est classique, mais redoutable :\r\n1. Infiltration d’un réseau via un phishing, une faille ou une connexion non sécurisée.\r\n2. Exfiltration des données sensibles.\r\n3. Chiffrement massif des serveurs pour bloquer toute activité.\r\n4. Publication de preuves de vol sur leurs canaux de communication pour mettre la victime sous pression.\r\n5. Négociation d’une rançon, assortie de menaces de divulgation.\r\nLes conséquences pour le Sénégal\r\nL’attaque contre la Dgid a des répercussions multiples :\r\n• Economiques : la paralysie du recouvrement fiscal retarde la rentrée de recettes essentielles pour l’Etat, avec un impact direct sur le budget public.\r\n• Administratives : les contribuables, particuliers comme entreprises, se retrouvent bloqués dans leurs démarches.\r\n• Sociales : la confiance des citoyens dans la capacité de l’Etat à protéger leurs données est sérieusement ébranlée.\r\n• Sécuritaires : la publication éventuelle des données pourrait exposer les Sénégalais à des fraudes, des usurpations d’identité et des escroqueries ciblées.\r\nLa vigilance des fonctionnaires en première ligne\r\nLa cybersécurité ne dépend pas uniquement des outils et des firewalls. Elle repose aussi -et surtout- sur la discipline des utilisateurs. Dans ce contexte, il est indispensable de rappeler quelques règles simples que chaque agent de la Fonction publique doit appliquer :\r\n• Ne jamais utiliser son ordinateur professionnel pour se connecter aux réseaux sociaux.\r\n• Ne pas cliquer sur des liens ou pièces jointes suspects.\r\n• N’installer aucun logiciel non autorisé par l’administration.\r\n• Respecter les consignes des administrateurs système.\r\nDe leur côté, les responsables informatiques doivent :\r\n• Bloquer l’accès aux sites non professionnels.\r\n• Mettre régulièrement à jour les systèmes de sécurité.\r\n• Utiliser des solutions avancées de détection d’intrusion, capables d’identifier les attaques même quand elles sont camouflées par des faux négatifs.\r\nUne menace qui ne peut plus être ignorée\r\nTrop de Sénégalais pensent encore que la cybersécurité est un problème lointain, réservé aux grandes puissances. Or, la réalité s’impose :\r\n• Hier, le Trésor public a été touché.\r\n• Aujourd’hui, c’est la Dgid.\r\nSi ces attaques sont liées, les criminels pourraient viser d’autres institutions et provoquer un véritable black-out numérique. Avec la montée en puissance de l’Intelligence artificielle, les cyberattaques deviennent de plus en plus sophistiquées et destructrices. Comme l’ont montré les conflits récents dans le monde, les guerres modernes se mènent aussi dans le cyberespace.\r\nNe pas céder au chantage et nettoyer en profondeur\r\nFace à cette situation, certains pourraient être tentés de payer la rançon pour rétablir rapidement les services. Mais il faut être clair : payer ne garantit rien. Même après avoir reçu l’argent, les pirates peuvent :\r\n• Revendre les données sensibles à d’autres criminels.\r\n• Publier une partie des fichiers pour faire pression à nouveau.\r\n• Ou pire : garder un accès secret dans le système, grâce à une porte dérobée (backdoor), pour revenir plus tard et relancer une nouvelle attaque.\r\nC’est pourquoi la seule stratégie viable est de refuser le paiement, de nettoyer en profondeur les systèmes infectés et de renforcer durablement la sécurité numérique de toutes les administrations. Cela implique :\r\n• Des audits complets de cybersécurité.\r\n• La modernisation des infrastructures informatiques.\r\n• La formation continue des agents publics.\r\n• Une coopération étroite avec les partenaires internationaux.\r\nConclusion : un signal d’alarme pour tout le pays\r\nL’attaque contre la Dgid doit être vue comme un signal d’alarme. Elle montre que le Sénégal est désormais dans la ligne de mire des cybercriminels, et que ses institutions doivent se préparer à un environnement numérique hostile.\r\nIl ne s’agit pas seulement d’un problème technique, mais d’un enjeu de souveraineté nationale. Si l’Etat ne prend pas des mesures radicales dès maintenant, les prochaines attaques pourraient viser d’autres secteurs stratégiques : l’énergie, les télécommunications, ou même la santé.', '2026-03-24 23:58:00', 18, 6, 'art_69c32508dc0341.58077175.jpg', 0),
+(23, 'Le ngalakh, un repas de Pâques', 'Comme pour toutes les religions, le partage est un principe cher au christianisme. Il se matérialise à travers l’aumône et l’entraide, surtout durant les célébrations cultuelles. C’est dans ce sens qu’il faut comprendre le repas distribué aux non-chrétiens à l’occasion des fêtes de Pâques : le ngalakh.', 'Au Sénégal, le ngalakh de Pâque symbolise le vivre ensemble entre chrétiens et musulmans. Pour sa fameuse recette, la famille Cabo habitant le quartier Quinzambougou de la commune de Tambacounda s’est réveillée. Sous nos yeux, Rose, l’aînée de cette famille de huit enfants se pointe au robinet pour chercher de l’eau en vue d’entamer le mélange. Pour préparer le ngalakh, il faut du sucre, du mil, de la pâte d’arachide, du pain de singe, du sucre, de l’arome, de l’ananas, de la noix de coco, du raisin.\r\n\r\nDans la cour, de grands récipients contenant du pain de singe et de la pâte d’arachide. Autour de ces bols, Rose et sa voisine commencent le mélange en attendant que les quelques femmes du quartier arrivent pour leur donner un coup de main.\r\nDurant plus d’une heure, elles trempent le pain de singe dans chacun des récipients qui contient déjà de l’eau et de la pâte d’arachide. Au final on obtient un liquide très consistant auquel la pâte d’arachide donne une couleur marron. Parallèlement, du couscous à base de mil est préparé qu’il s’agira ensuite d’ajouter dans ce liquide pour avoir enfin du ngalakh. Quant aux arômes, aux tranches d’ananas, au sucre, au coco râpé, au raisin, c’est pour donner un goût succulent au ngalakh qui est mis au frais pour éviter qu’il ne fermente.\r\n\r\nSi certaines familles chrétiennes choisissent le vendredi saint, dernier vendredi du mois de carême, d’autres par contre attendent le lendemain pour préparer ce repas qui est très prisé par les musulmans. Antoinette Cabo explique que si les musulmans aiment le ngalakh, c’est bien parce qu’il a la bénédiction de Dieu. Mais pour beaucoup de prêtres, ce repas n’a pas une histoire particulière de la religion chrétienne.\r\n\r\nÀ la fin de la préparation, des pots, des bouteilles, de petits seaux se bousculent prêts à être remplis et distribués aux voisins et aux proches, qu’ils soient chrétiens ou non. Le ngalakh, en plus de symboliser le partage, renforce la cohésion sociale entre les différentes confessions religieuses au Sénégal.', '2026-03-25 00:03:07', 16, 7, 'art_69c3263b8dafb8.90974718.png', 0),
+(24, 'Le café Touba, café « saf »', 'Le café Touba est une boisson à base de café aromatisé au poivre de Guinée (le fruit de la Xylopia aethiopica) communément appelé poivre noir ou diar en wolof.', 'Il tire son nom de la ville sénégalaise de Touba et son origine est liée à la fraternité des Mourides ; on raconte que son fondateur, Cheikh Amadou Bamba, a ramené la recette du Gabon où il avait été envoyé en exil. Aujourd’hui encore, la fraternité mouride associe à cette boisson une grande valeur symbolique et la consomme à l’occasion de cérémonies religieuses.\r\n\r\nDepuis quelques années, le café Touba se popularise et, au delà des célébrations religieuses. Il est très facile de trouver des vendeurs ambulants, avec leur petit fourneau et leur casserole, qui le proposent dans la rue. Et on le trouve désormais en vente en sachets dans les boutiques de quartier.\r\n\r\nSon seul défaut : être vendu dans des petites tasses en plastique que les consommateurs jettent négligemment sur le trottoir...', '2026-03-25 00:04:46', 16, 7, 'art_69c3269ec223d2.90583578.jpg', 0);
+
+
+
+CREATE TABLE `categories` (
+  `id` int(11) NOT NULL,
+  `nom` varchar(100) NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+
+INSERT INTO `categories` (`id`, `nom`) VALUES
+(16, 'CUISINE'),
+(14, 'DIVERTISSEMENT'),
+(10, 'ECONOMIE'),
+(12, 'FAITS-DIVERS'),
+(18, 'NUMERIQUE'),
+(17, 'PEOPLE'),
+(9, 'POLITIQUE'),
+(15, 'SANTE'),
+(11, 'SOCIETE'),
+(13, 'SPORT');
+
+
+CREATE TABLE `utilisateurs` (
+  `id` int(11) NOT NULL,
+  `nom` varchar(100) NOT NULL,
+  `prenom` varchar(100) NOT NULL,
+  `login` varchar(100) NOT NULL,
+  `mot_de_passe` varchar(255) NOT NULL,
+  `role` enum('editeur','administrateur') NOT NULL DEFAULT 'editeur',
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+
+INSERT INTO `utilisateurs` (`id`, `nom`, `prenom`, `login`, `mot_de_passe`, `role`, `created_at`) VALUES
+(1, 'Diallo', 'Amadou', 'admin', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'administrateur', '2026-03-19 02:29:26'),
+(3, 'Balde', 'Jeynaba', 'hellow', '$2y$10$2s6bm0QYBBUh8KqvxzzF5.GMyePVbdQFFRKySuExYxgXsbfOR.ZNS', 'editeur', '2026-03-23 22:51:31'),
+(4, 'Dia', 'Diarra', 'diarra', '$2y$10$w8tKs.3cyND96HeRemQvvOCTjRad0vv20wZBwBvFjinqHoiYfhjPq', 'editeur', '2026-03-24 19:28:38'),
+(5, 'Gueye', 'Rokhaya', 'rokya', '$2y$10$c9UiM/pfTAWh3lC/AML26Oxqlxfza7RkBw5BPr4V8WM.thvVdlQHO', 'editeur', '2026-03-24 19:47:43'),
+(6, 'Elitrobi', 'Navier', 'navier', '$2y$10$X/gDCzFi6/BZfi0IBMeH/OuGqJqD6DONIlBX/Yq9iCWRaBjOisDeG', 'editeur', '2026-03-24 22:40:22'),
+(7, 'yaay', 'Dut', 'dutyaay', '$2y$10$IfQWnnow1mn1QJq1rtltIOq7Yz6y9QHveB/cLR9BeNCyC0xTLg.P6', 'editeur', '2026-03-24 22:41:39');
+
+ALTER TABLE `articles`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `fk_categorie` (`id_categorie`),
+  ADD KEY `fk_auteur` (`id_auteur`);
+
+
+ALTER TABLE `categories`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `nom` (`nom`);
+
+
+ALTER TABLE `utilisateurs`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `login` (`login`);
+
+
+ALTER TABLE `articles`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=25;
+
+
+
+ALTER TABLE `categories`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=19;
+
+
+ALTER TABLE `utilisateurs`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=8;
+
+
+ALTER TABLE `articles`
+  ADD CONSTRAINT `fk_auteur` FOREIGN KEY (`id_auteur`) REFERENCES `utilisateurs` (`id`),
+  ADD CONSTRAINT `fk_categorie` FOREIGN KEY (`id_categorie`) REFERENCES `categories` (`id`);
+COMMIT;
+
+
+
+
+C:\xampp\htdocs\Site_Actu_Dynamique>(echo.   & echo ==========================================   & echo FICHIER : C:\xampp\htdocs\Site_Actu_Dynamique\articles\ajouter.php   & echo ==========================================   & type "C:\xampp\htdocs\Site_Actu_Dynamique\articles\ajouter.php" ) 
+ 
+========================================== 
+FICHIER : C:\xampp\htdocs\Site_Actu_Dynamique\articles\ajouter.php 
+========================================== 
+<?php
+require_once __DIR__ . '/../config/db.php';
+require_once __DIR__ . '/../config/session.php';
+
+autoriser(['editeur', 'administrateur']);
+
+$pdo = getPDO();
+$erreurs = [];
+$succes = false;
+
+$id_auteur = $_SESSION['utilisateur']['id'] ?? null;
+
+$upload_dir = realpath(__DIR__ . '/..') . DIRECTORY_SEPARATOR . 'uploads' . DIRECTORY_SEPARATOR;
+
+if (!is_dir($upload_dir)) {
+    mkdir($upload_dir, 0777, true);
+}
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $titre = trim($_POST['titre'] ?? '');
+    $description = trim($_POST['description_courte'] ?? '');
+    $contenu = trim($_POST['contenu'] ?? '');
+    $id_categorie = (int)($_POST['id_categorie'] ?? 0);
+    $nom_image = null;
+
+    if (empty($titre) || empty($description) || empty($contenu) || $id_categorie <= 0) {
+        $erreurs[] = "Tous les champs obligatoires (*) doivent être remplis.";
+    }
+
+    if (isset($_FILES['image']) && $_FILES['image']['error'] === UPLOAD_ERR_OK) {
+        $extension = strtolower(pathinfo($_FILES['image']['name'], PATHINFO_EXTENSION));
+        $extensions_valides = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
+
+        if (!in_array($extension, $extensions_valides)) {
+            $erreurs[] = "Format d'image non supporté.";
+        } else {
+            // uniqid pour éviter les écrasements de fichiers
+            $nom_image = uniqid('art_', true) . '.' . $extension;
+            $destination = $upload_dir . $nom_image;
+
+            if (!move_uploaded_file($_FILES['image']['tmp_name'], $destination)) {
+                $erreurs[] = "Erreur lors du transfert de l'image.";
+                $nom_image = null;
+            }
+        }
+    }
+
+    if (empty($erreurs)) {
+        try {
+            $stmt = $pdo->prepare("
+                INSERT INTO articles (titre, description_courte, contenu, id_categorie, id_auteur, image, date_publication) 
+                VALUES (:titre, :desc, :cont, :cat, :auteur, :img, NOW())
+            ");
+            $stmt->execute([
+                ':titre'  => $titre,
+                ':desc'   => $description,
+                ':cont'   => $contenu,
+                ':cat'    => $id_categorie,
+                ':auteur' => $id_auteur,
+                ':img'    => $nom_image
+            ]);
+            $succes = true;
+        } catch (PDOException $e) {
+            $erreurs[] = "Erreur SQL : " . $e->getMessage();
+        }
+    }
+}
+
+$categories = $pdo->query("SELECT id, nom FROM categories ORDER BY nom ASC")->fetchAll();
+?>
+
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>Ajouter un article</title>
+    <link rel="stylesheet" href="/Site_Actu_Dynamique/css/style.css">
+    <style>
+        .img-preview {
+            max-width: 100%;
+            height: auto;
+            max-height: 300px;
+            border-radius: 8px;
+            object-fit: cover;
+        }
+    </style>
+</head>
+<body>
+    <?php include __DIR__ . '/../entete.php'; ?>
+    <?php include __DIR__ . '/../menu.php'; ?>
+
+    <main class="container">
+        <h1>Ajouter un nouvel article</h1>
+
+        <?php if ($succes): ?>
+            <div class="alerte succes">
+                L'article a été publié avec succès ! 
+                <a href="/Site_Actu_Dynamique/accueil.php">Retour à l'accueil</a>
+            </div>
+        <?php endif; ?>
+
+        <?php foreach ($erreurs as $err): ?>
+            <div class="alerte erreur"><?= htmlspecialchars($err) ?></div>
+        <?php endforeach; ?>
+
+        <form action="ajouter.php" method="POST" enctype="multipart/form-data">
+            <div class="champ">
+                <label>Titre *</label>
+                <input type="text" name="titre" value="<?= htmlspecialchars($_POST['titre'] ?? '') ?>" required>
+            </div>
+
+            <div class="champ">
+                <label>Catégorie *</label>
+                <select name="id_categorie" required>
+                    <option value="">-- Choisir --</option>
+                    <?php foreach ($categories as $cat): ?>
+                        <option value="<?= $cat['id'] ?>" <?= (isset($_POST['id_categorie']) && $_POST['id_categorie'] == $cat['id']) ? 'selected' : '' ?>>
+                            <?= htmlspecialchars($cat['nom']) ?>
+                        </option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
+
+            <div class="champ">
+                <label>Image d'illustration (JPG, PNG, WEBP)</label>
+                <input type="file" name="image" accept="image/*">
+            </div>
+
+            <div class="champ">
+                <label>Description courte *</label>
+                <textarea name="description_courte" rows="3" required><?= htmlspecialchars($_POST['description_courte'] ?? '') ?></textarea>
+            </div>
+
+            <div class="champ">
+                <label>Contenu de l'article *</label>
+                <textarea name="contenu" rows="10" required><?= htmlspecialchars($_POST['contenu'] ?? '') ?></textarea>
+            </div>
+
+            <div class="actions">
+                <button type="submit" class="btn-primaire">Publier l'article</button>
+                <a href="/Site_Actu_Dynamique/accueil.php" class="btn-secondaire">Annuler</a>
+            </div>
+        </form>
+    </main>
+
+    <?php include __DIR__ . '/../pied.php'; ?>
+</body>
+</html>
+C:\xampp\htdocs\Site_Actu_Dynamique>(echo.   & echo ==========================================   & echo FICHIER : C:\xampp\htdocs\Site_Actu_Dynamique\articles\check_system.php   & echo ==========================================   & type "C:\xampp\htdocs\Site_Actu_Dynamique\articles\check_system.php" ) 
+ 
+========================================== 
+FICHIER : C:\xampp\htdocs\Site_Actu_Dynamique\articles\check_system.php 
+========================================== 
+<?php
+$dossier = __DIR__ . '/uploads';
+
+echo "<h1>Diagnostic du Système - Site Actu Dynamique</h1>";
+
+if (!is_dir($dossier)) {
+    echo "<p style='color:red;'>Le dossier 'uploads' n'existe pas.</p>";
+} else {
+    echo "<p style='color:green;'>Le dossier 'uploads' est présent.</p>";
+    
+    if (is_writable($dossier)) {
+        echo "<p style='color:green;'>Le dossier est accessible en écriture (Prêt pour l'upload).</p>";
+    } else {
+        echo "<p style='color:red;'>Erreur : PHP ne peut pas écrire dans le dossier. Vérifiez les permissions.</p>";
+    }
+}
+
+echo "<h3>Configuration PHP :</h3>";
+echo "<ul>";
+echo "<li>Taille max fichier (upload_max_filesize) : " . ini_get('upload_max_filesize') . "</li>";
+echo "<li>Mémoire limite (memory_limit) : " . ini_get('memory_limit') . "</li>";
+echo "</ul>";
+
+if (strpos(ini_get('upload_max_filesize'), 'M') !== false && (int)ini_get('upload_max_filesize') < 2) {
+    echo "<p style='color:orange;'>Attention : La limite d'upload est basse. Évitez les photos de plus de 2Mo.</p>";
+}
+?>
+C:\xampp\htdocs\Site_Actu_Dynamique>(echo.   & echo ==========================================   & echo FICHIER : C:\xampp\htdocs\Site_Actu_Dynamique\articles\corbeille.php   & echo ==========================================   & type "C:\xampp\htdocs\Site_Actu_Dynamique\articles\corbeille.php" ) 
+ 
+========================================== 
+FICHIER : C:\xampp\htdocs\Site_Actu_Dynamique\articles\corbeille.php 
+========================================== 
+<?php
+require_once __DIR__ . '/../config/db.php';
+require_once __DIR__ . '/../config/session.php';
+
+autoriser(['editeur', 'administrateur']);
+
+
+$pdo = getPDO();
+
+$stmt = $pdo->query('
+    SELECT a.id, a.titre, a.date_publication, c.nom AS categorie,
+    CONCAT(u.prenom, " ", u.nom) AS auteur
+    FROM articles a
+    JOIN categories c ON a.id_categorie = c.id
+    JOIN utilisateurs u ON a.id_auteur = u.id
+    WHERE a.est_supprime = 1
+    ORDER BY a.date_publication DESC
+');
+$archives = $stmt->fetchAll();
+?>
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>Corbeille - ESP Actu</title>
+    <link rel="stylesheet" href="/Site_Actu_Dynamique/css/style.css">
+</head>
+<body>
+
+<?php include __DIR__ . '/../entete.php'; ?>
+<?php include __DIR__ . '/../menu.php'; ?>
+
+<main class="container">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+        <h1>Articles Archivés (Corbeille)</h1>
+        <a href="liste.php" class="btn-secondaire">← Retour à la gestion</a>
+    </div>
+
+    <?php if (empty($archives)): ?>
+        <p class="vide">La corbeille est vide.</p>
+    <?php else: ?>
+        <table class="tableau">
+            <thead>
+                <tr>
+                    <th>Titre</th>
+                    <th>Catégorie</th>
+                    <th>Auteur</th>
+                    <th style="text-align: center;">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                <?php foreach ($archives as $a): ?>
+                <tr>
+                    <td><strong><?= htmlspecialchars($a['titre']) ?></strong></td>
+                    <td><span class="cat-tag"><?= htmlspecialchars($a['categorie']) ?></span></td>
+                    <td><?= htmlspecialchars($a['auteur']) ?></td>
+                    <td>
+                        <div class="actions-group">
+                            <a href="restaurer.php?id=<?= $a['id'] ?>" class="btn-edit" style="background: #dcfce7; color: #166534; border-color: #86efac;">
+                                Restaurer
+                            </a>
+                            <a href="supprimer_definitivement.php?id=<?= $a['id'] ?>" class="btn-delete" 
+                               onclick="return confirm('Attention : cette action est irréversible. Supprimer définitivement ?')">
+                                Détruire
+                            </a>
+                        </div>
+                    </td>
+                </tr>
+                <?php endforeach; ?>
+            </tbody>
+        </table>
+    <?php endif; ?>
+</main>
+
+<?php include __DIR__ . '/../pied.php'; ?>
+</body>
+</html>
+C:\xampp\htdocs\Site_Actu_Dynamique>(echo.   & echo ==========================================   & echo FICHIER : C:\xampp\htdocs\Site_Actu_Dynamique\articles\detail.php   & echo ==========================================   & type "C:\xampp\htdocs\Site_Actu_Dynamique\articles\detail.php" ) 
+ 
+========================================== 
+FICHIER : C:\xampp\htdocs\Site_Actu_Dynamique\articles\detail.php 
+========================================== 
+<?php
+require_once __DIR__ . '/../config/db.php';
+require_once __DIR__ . '/../config/session.php';
+
+$pdo  = getPDO();
+$id   = (int)($_GET['id'] ?? 0);
+
+$stmt = $pdo->prepare(
+    'SELECT a.*, c.nom AS categorie, CONCAT(u.prenom, " ", u.nom) AS auteur
+     FROM articles a
+     JOIN categories c ON a.id_categorie = c.id
+     JOIN utilisateurs u ON a.id_auteur = u.id
+     WHERE a.id = :id AND a.est_supprime = 0' 
+);
+$stmt->execute([':id' => $id]);
+$article = $stmt->fetch();
+
+if (!$article) {
+    header('Location: /Site_Actu_Dynamique/accueil.php?erreur=introuvable');
+    exit;
+}
+?>
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title><?= htmlspecialchars($article['titre']) ?> - ESP Actu</title>
+    <link rel="stylesheet" href="/Site_Actu_Dynamique/css/style.css">
+</head>
+<body>
+
+<?php include __DIR__ . '/../entete.php'; ?>
+<?php include __DIR__ . '/../menu.php'; ?>
+
+<main class="container">
+
+    <a href="/Site_Actu_Dynamique/accueil.php" class="lien-retour" style="display: inline-block; margin-bottom: 1.5rem;">
+        &larr; Retour à l'accueil
+    </a>
+
+    <article class="article-complet">
+
+        <span class="badge-categorie">
+            <?= htmlspecialchars($article['categorie']) ?>
+        </span>
+
+        <h1><?= htmlspecialchars($article['titre']) ?></h1>
+
+        <div class="meta-article">
+            Par <strong><?= htmlspecialchars($article['auteur']) ?></strong>
+            — Publié le <?= date('d/m/Y à H:i', strtotime($article['date_publication'])) ?>
+        </div>
+
+        <?php if (!empty($article['image'])): ?>
+            <div class="image-container-detail">
+                <img src="/Site_Actu_Dynamique/uploads/<?= htmlspecialchars($article['image']) ?>" 
+                     class="article-image" 
+                     alt="<?= htmlspecialchars($article['titre']) ?>">
+            </div>
+        <?php endif; ?>
+
+        <div class="contenu-article">
+            <?= nl2br(htmlspecialchars($article['contenu'])) ?>
+        </div>
+
+    </article>
+
+</main>
+
+<?php include __DIR__ . '/../pied.php'; ?>
+
+</body>
+</html>
+C:\xampp\htdocs\Site_Actu_Dynamique>(echo.   & echo ==========================================   & echo FICHIER : C:\xampp\htdocs\Site_Actu_Dynamique\articles\liste.php   & echo ==========================================   & type "C:\xampp\htdocs\Site_Actu_Dynamique\articles\liste.php" ) 
+ 
+========================================== 
+FICHIER : C:\xampp\htdocs\Site_Actu_Dynamique\articles\liste.php 
+========================================== 
+<?php
+require_once __DIR__ . '/../config/db.php';
+require_once __DIR__ . '/../config/session.php';
+autoriser(['editeur', 'administrateur']);
+$pdo = getPDO();
+
+
+$articlesParPage = 5;
+$page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
+if ($page < 1) $page = 1;
+$offset = ($page - 1) * $articlesParPage;
+
+
+$totalArticles = $pdo->query("SELECT COUNT(*) FROM articles")->fetchColumn();
+$totalPages = ceil($totalArticles / $articlesParPage);
+
+
+$stmt = $pdo->prepare(
+    'SELECT a.id, a.titre, a.date_publication, c.nom AS categorie,
+    CONCAT(u.prenom, " ", u.nom) AS auteur
+    FROM articles a
+    JOIN categories c ON a.id_categorie = c.id
+    JOIN utilisateurs u ON a.id_auteur = u.id
+    WHERE a.est_supprime = 0
+    ORDER BY a.date_publication DESC
+    LIMIT :limit OFFSET :offset'
+);
+$stmt->bindValue(':limit', $articlesParPage, PDO::PARAM_INT);
+$stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
+$stmt->execute();
+$articles = $stmt->fetchAll();
+?>
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>Gestion des articles</title>
+    <link rel="stylesheet" href="/Site_Actu_Dynamique/css/style.css">
+</head>
+<body>
+<?php include __DIR__ . '/../entete.php'; ?>
+<?php include __DIR__ . '/../menu.php'; ?>
+<main class="container">
+    <h1>Gestion des articles</h1>
+    <a href="ajouter.php" class="btn-primaire" style="margin-bottom: 20px; display: inline-block;">+ Nouvel article</a>
+    
+    <table class="tableau">
+        <thead>
+            <tr><th>Titre</th><th>Categorie</th><th>Auteur</th><th>Date</th><th>Actions</th></tr>
+        </thead>
+        <tbody>
+            <?php foreach ($articles as $a): ?>
+            <tr>
+                <td><?= htmlspecialchars($a['titre']) ?></td>
+                <td><?= htmlspecialchars($a['categorie']) ?></td>
+                <td><?= htmlspecialchars($a['auteur']) ?></td>
+                <td><?= date('d/m/Y', strtotime($a['date_publication'])) ?></td>
+                <td>
+                    <a href="modifier.php?id=<?= $a['id'] ?>" class="btn-secondaire">Modifier</a>
+                    <a href="supprimer.php?id=<?= $a['id'] ?>" class="btn-danger" onclick="return confirm('Supprimer ?')">Supprimer</a>
+                </td>
+            </tr>
+            <?php endforeach; ?>
+        </tbody>
+    </table>
+
+    <div class="pagination">
+        <?php if ($page > 1): ?>
+            <a href="?page=<?= $page - 1 ?>" class="prev">« Précédent</a>
+        <?php endif; ?>
+
+        <?php for ($i = 1; $i <= $totalPages; $i++): ?>
+            <a href="?page=<?= $i ?>" class="<?= ($i == $page) ? 'active' : '' ?>"><?= $i ?></a>
+        <?php endfor; ?>
+
+        <?php if ($page < $totalPages): ?>
+            <a href="?page=<?= $page + 1 ?>" class="next">Suivant »</a>
+        <?php endif; ?>
+    </div>
+</main>
+<?php include __DIR__ . '/../pied.php'; ?>
+</body>
+</html>
+C:\xampp\htdocs\Site_Actu_Dynamique>(echo.   & echo ==========================================   & echo FICHIER : C:\xampp\htdocs\Site_Actu_Dynamique\articles\modifier.php   & echo ==========================================   & type "C:\xampp\htdocs\Site_Actu_Dynamique\articles\modifier.php" ) 
+ 
+========================================== 
+FICHIER : C:\xampp\htdocs\Site_Actu_Dynamique\articles\modifier.php 
+========================================== 
+<?php
+require_once __DIR__ . '/../config/db.php';
+require_once __DIR__ . '/../config/session.php';
+
+if (!isset($_SESSION['user_id'])) {
+    header('Location: ../connexion.php');
+    exit;
+}
+
+$pdo = getPDO();
+$id = (int)($_GET['id'] ?? 0);
+
+$stmt = $pdo->prepare('SELECT * FROM articles WHERE id = :id');
+$stmt->execute([':id' => $id]);
+$article = $stmt->fetch();
+
+if (!$article) {
+    header('Location: liste.php'); 
+    exit;
+}
+
+$categories = $pdo->query('SELECT id, nom FROM categories ORDER BY nom')->fetchAll();
+$erreurs = [];
+$succes = false;
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $titre = trim($_POST['titre'] ?? '');
+    $description = trim($_POST['description_courte'] ?? '');
+    $contenu = trim($_POST['contenu'] ?? '');
+    $id_cat = (int)($_POST['id_categorie'] ?? 0);
+
+    if (empty($titre)) $erreurs[] = 'Le titre est obligatoire.';
+    if (empty($description)) $erreurs[] = 'La description courte est obligatoire.';
+    if (empty($contenu)) $erreurs[] = 'Le contenu est obligatoire.';
+    if ($id_cat <= 0) $erreurs[] = 'Veuillez choisir une catégorie.';
+
+    $nom_image = $article['image']; 
+
+    if (isset($_FILES['image']) && $_FILES['image']['error'] === UPLOAD_ERR_OK) {
+        $dossier_upload = realpath(__DIR__ . '/..') . DIRECTORY_SEPARATOR . 'uploads' . DIRECTORY_SEPARATOR;
+        
+        if (!is_dir($dossier_upload)) {
+            mkdir($dossier_upload, 0777, true);
+        }
+
+        $extension = strtolower(pathinfo($_FILES['image']['name'], PATHINFO_EXTENSION));
+        $extensions_autorisees = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
+
+        if (!in_array($extension, $extensions_autorisees)) {
+            $erreurs[] = 'Format d\'image non autorisé (JPG, PNG, GIF, WEBP).';
+        } else {
+            $nouveau_nom = uniqid('art_', true) . '.' . $extension;
+            $chemin_destination = $dossier_upload . $nouveau_nom;
+
+            if (move_uploaded_file($_FILES['image']['tmp_name'], $chemin_destination)) {
+                if (!empty($article['image']) && file_exists($dossier_upload . $article['image'])) {
+                    unlink($dossier_upload . $article['image']);
+                }
+                $nom_image = $nouveau_nom;
+            } else {
+                $erreurs[] = 'Erreur technique lors de l\'upload de la nouvelle image.';
+            }
+        }
+    }
+
+    if (empty($erreurs)) {
+        try {
+            $stmt = $pdo->prepare('
+                UPDATE articles 
+                SET titre = :titre, description_courte = :desc, contenu = :contenu, 
+                    id_categorie = :cat, image = :img
+                WHERE id = :id
+            ');
+            $stmt->execute([
+                ':titre'   => $titre,
+                ':desc'    => $description,
+                ':contenu' => $contenu,
+                ':cat'     => $id_cat,
+                ':img'     => $nom_image,
+                ':id'      => $id
+            ]);
+            $succes = true;
+            $article['image'] = $nom_image;
+        } catch (PDOException $e) {
+            $erreurs[] = "Erreur SQL : " . $e->getMessage();
+        }
+    }
+} else {
+    $titre = $article['titre'];
+    $description = $article['description_courte'];
+    $contenu = $article['contenu'];
+    $id_cat = $article['id_categorie'];
+}
+?>
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>Modifier l'article</title>
+    <link rel="stylesheet" href="/Site_Actu_Dynamique/css/style.css">
+</head>
+<body>
+
+<?php include __DIR__ . '/../entete.php'; ?>
+<?php include __DIR__ . '/../menu.php'; ?>
+
+<main class="container">
+    <h1>Modifier l'article</h1>
+
+    <?php if ($succes): ?>
+        <div class="alerte succes">
+            L'article a été mis à jour avec succès ! 
+            <a href="detail.php?id=<?= $id ?>">Voir l'article</a> ou <a href="liste.php">Retour à la liste</a>
+        </div>
+    <?php endif; ?>
+
+    <?php foreach ($erreurs as $e): ?>
+        <div class="alerte erreur"><?= htmlspecialchars($e) ?></div>
+    <?php endforeach; ?>
+
+    <div class="form-wrapper">
+        <form method="POST" enctype="multipart/form-data">
+            <div class="champ">
+                <label>Titre *</label>
+                <input type="text" name="titre" value="<?= htmlspecialchars($titre) ?>" required>
+            </div>
+
+            <div class="champ">
+                <label>Catégorie *</label>
+                <select name="id_categorie" required>
+                    <?php foreach ($categories as $cat): ?>
+                        <option value="<?= $cat['id'] ?>" <?= ($id_cat == $cat['id']) ? 'selected' : '' ?>>
+                            <?= htmlspecialchars($cat['nom']) ?>
+                        </option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
+
+            <div class="champ">
+                <label>Image actuelle</label>
+                <?php if (!empty($article['image'])): ?>
+                    <div style="margin: 10px 0;">
+                        <img src="/Site_Actu_Dynamique/uploads/<?= htmlspecialchars($article['image']) ?>" alt="Aperçu" style="max-width: 200px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1);">
+                    </div>
+                <?php else: ?>
+                    <p style="font-style: italic; color: #888;">Aucune image pour cet article.</p>
+                <?php endif; ?>
+                <label>Remplacer l'image (optionnel)</label>
+                <input type="file" name="image" accept="image/*">
+            </div>
+
+            <div class="champ">
+                <label>Description courte *</label>
+                <textarea name="description_courte" rows="3" required><?= htmlspecialchars($description) ?></textarea>
+            </div>
+
+            <div class="champ">
+                <label>Contenu complet *</label>
+                <textarea name="contenu" rows="10" required><?= htmlspecialchars($contenu) ?></textarea>
+            </div>
+
+            <div class="actions" style="margin-top: 20px;">
+                <button type="submit" class="btn-primaire">Enregistrer les modifications</button>
+                <a href="liste.php" class="btn-secondaire">Annuler</a>
+            </div>
+        </form>
+    </div>
+</main>
+
+<?php include __DIR__ . '/../pied.php'; ?>
+
+</body>
+</html>
+C:\xampp\htdocs\Site_Actu_Dynamique>(echo.   & echo ==========================================   & echo FICHIER : C:\xampp\htdocs\Site_Actu_Dynamique\articles\par_categorie.php   & echo ==========================================   & type "C:\xampp\htdocs\Site_Actu_Dynamique\articles\par_categorie.php" ) 
+ 
+========================================== 
+FICHIER : C:\xampp\htdocs\Site_Actu_Dynamique\articles\par_categorie.php 
+========================================== 
+<?php
+require_once __DIR__ . '/../config/db.php';
+require_once __DIR__ . '/../config/session.php';
+
+$pdo = getPDO();
+
+$id_cat = (int)($_GET['id'] ?? 0);
+
+$par_page = 6; // Aligné sur 6 pour la grille (3x2)
+$page_courante = max(1, (int)($_GET['page'] ?? 1));
+$offset = ($page_courante - 1) * $par_page;
+
+$stmt = $pdo->prepare('SELECT * FROM categories WHERE id = :id');
+$stmt->execute([':id' => $id_cat]);
+$categorie = $stmt->fetch();
+
+if (!$categorie) {
+    header('Location: /Site_Actu_Dynamique/accueil.php');
+    exit;
+}
+
+// Correction : On ne compte que les articles non supprimés
+$stmt = $pdo->prepare('SELECT COUNT(*) FROM articles WHERE id_categorie = :id_cat AND est_supprime = 0');
+$stmt->execute([':id_cat' => $id_cat]);
+$total = (int)$stmt->fetchColumn();
+
+$nb_pages = (int)ceil($total / $par_page);
+
+// Ajout de a.image et a.id_categorie pour le badge
+$stmt = $pdo->prepare(
+    'SELECT a.id, a.titre, a.description_courte, a.date_publication, a.image, a.id_categorie,
+            c.nom AS nom_categorie,
+            CONCAT(u.prenom, " ", u.nom) AS auteur
+     FROM articles a
+     JOIN categories c ON a.id_categorie = c.id
+     JOIN utilisateurs u ON a.id_auteur = u.id
+     WHERE a.id_categorie = :id_cat AND a.est_supprime = 0
+     ORDER BY a.date_publication DESC
+     LIMIT :limite OFFSET :offset'
+);
+
+$stmt->bindValue(':id_cat', $id_cat, PDO::PARAM_INT);
+$stmt->bindValue(':limite', $par_page, PDO::PARAM_INT);
+$stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
+$stmt->execute();
+
+$articles = $stmt->fetchAll();
+
+// Récupération des catégories avec le compte pour les "Pills"
+$categories = $pdo->query(
+    'SELECT c.id, c.nom, COUNT(a.id) as total_articles
+     FROM categories c
+     LEFT JOIN articles a ON a.id_categorie = c.id AND a.est_supprime = 0
+     GROUP BY c.id, c.nom
+     ORDER BY c.nom'
+)->fetchAll();
+?>
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>Catégorie : <?= htmlspecialchars($categorie['nom']) ?></title>
+    <link rel="stylesheet" href="/Site_Actu_Dynamique/css/style.css">
+</head>
+<body>
+
+<?php include __DIR__ . '/../entete.php'; ?>
+<?php include __DIR__ . '/../menu.php'; ?>
+
+<main class="container">
+
+    <div class="filter-wrapper">
+        <span class="filter-label">Catégories :</span>
+        <div class="filter-group">
+            <a href="/Site_Actu_Dynamique/accueil.php" class="filter-pill">Toutes</a>
+            <?php foreach ($categories as $cat): ?>
+                <?php if ($cat['total_articles'] > 0): ?>
+                    <a href="par_categorie.php?id=<?= $cat['id'] ?>" 
+                       class="filter-pill <?= $cat['id'] == $id_cat ? 'active' : '' ?>">
+                        <?= htmlspecialchars($cat['nom']) ?> 
+                        <span class="pill-count"><?= $cat['total_articles'] ?></span>
+                    </a>
+                <?php endif; ?>
+            <?php endforeach; ?>
+        </div>
+    </div>
+
+    <h1>Catégorie : <?= htmlspecialchars($categorie['nom']) ?></h1>
+    <p class="compteur"><?= $total ?> article(s) trouvé(s)</p>
+
+    <div class="articles-grid">
+        <?php if (empty($articles)): ?>
+            <p class="vide">Aucun article dans cette catégorie pour le moment.</p>
+        <?php endif; ?>
+
+        <?php foreach ($articles as $a): ?>
+            <article class="card">
+                <div class="card-image">
+                    <?php if (!empty($a['image'])): ?>
+                        <img src="/Site_Actu_Dynamique/uploads/<?= htmlspecialchars($a['image']) ?>" alt="<?= htmlspecialchars($a['titre']) ?>">
+                    <?php else: ?>
+                        <div class="image-placeholder">XIBAAR YI</div>
+                    <?php endif; ?>
+                    
+                    <span class="card-badge">
+                        <?= htmlspecialchars($a['nom_categorie']) ?>
+                    </span>
+                </div>
+
+                <div class="card-content">
+                    <h2>
+                        <a href="detail.php?id=<?= $a['id'] ?>">
+                            <?= htmlspecialchars(mb_strimwidth($a['titre'], 0, 60, "...")) ?>
+                        </a>
+                    </h2>
+
+                    <p class="card-excerpt">
+                        <?= htmlspecialchars(mb_strimwidth($a['description_courte'], 0, 100, "...")) ?>
+                    </p>
+
+                    <footer class="card-meta">
+                        <span>Par <strong><?= htmlspecialchars($a['auteur']) ?></strong></span>
+                        <time><?= date('d/m/Y', strtotime($a['date_publication'])) ?></time>
+                    </footer>
+                </div>
+            </article>
+        <?php endforeach; ?>
+    </div>
+
+    <?php if ($nb_pages > 1): ?>
+        <nav class="pagination">
+            <?php if ($page_courante > 1): ?>
+                <a href="?id=<?= $id_cat ?>&page=<?= $page_courante - 1 ?>" class="prev">Précédent</a>
+            <?php endif; ?>
+
+            <?php for ($i = 1; $i <= $nb_pages; $i++): ?>
+                <a href="?id=<?= $id_cat ?>&page=<?= $i ?>" class="<?= $i == $page_courante ? 'active' : '' ?>">
+                    <?= $i ?>
+                </a>
+            <?php endfor; ?>
+
+            <?php if ($page_courante < $nb_pages): ?>
+                <a href="?id=<?= $id_cat ?>&page=<?= $page_courante + 1 ?>" class="next">Suivant</a>
+            <?php endif; ?>
+        </nav>
+    <?php endif; ?>
+
+</main>
+
+<?php include __DIR__ . '/../pied.php'; ?>
+
+</body>
+</html>
+C:\xampp\htdocs\Site_Actu_Dynamique>(echo.   & echo ==========================================   & echo FICHIER : C:\xampp\htdocs\Site_Actu_Dynamique\articles\recherche.php   & echo ==========================================   & type "C:\xampp\htdocs\Site_Actu_Dynamique\articles\recherche.php" ) 
+ 
+========================================== 
+FICHIER : C:\xampp\htdocs\Site_Actu_Dynamique\articles\recherche.php 
+========================================== 
+
+<?php
+require_once __DIR__ . '/../config/db.php';
+require_once __DIR__ . '/../config/session.php';
+
+autoriser(['admin', 'editeur', 'utilisateur']); 
+
+$pdo = getPDO();
+$search = isset($_GET['q']) ? trim($_GET['q']) : '';
+
+$articles = [];
+
+if (!empty($search)) {
+    try {
+        $sql = "SELECT a.*, c.nom AS categorie, CONCAT(u.prenom, ' ', u.nom) AS auteur 
+                FROM articles a 
+                JOIN categories c ON a.id_categorie = c.id 
+                JOIN utilisateurs u ON a.id_auteur = u.id 
+                WHERE (a.titre LIKE :q1 OR a.contenu LIKE :q2) 
+                AND a.est_supprime = 0
+                ORDER BY a.date_publication DESC";
+
+        $stmt = $pdo->prepare($sql);
+        $param = "%$search%";
+
+        $stmt->execute([
+            ':q1' => $param,
+            ':q2' => $param
+        ]);
+        
+        $articles = $stmt->fetchAll();
+    } catch (PDOException $e) {
+        $erreur_sql = "Erreur : " . $e->getMessage();
+    }
+}
+?>
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>Recherche : <?= htmlspecialchars($search) ?></title>
+    <link rel="stylesheet" href="/Site_Actu_Dynamique/css/style.css">
+</head>
+<body>
+
+<?php include __DIR__ . '/../entete.php'; ?>
+<?php include __DIR__ . '/../menu.php'; ?>
+
+<main class="container">
+    <h1>Résultats de recherche</h1>
+
+    <?php if (isset($erreur_sql)): ?>
+        <div class="alerte erreur"><?= htmlspecialchars($erreur_sql) ?></div>
+    <?php endif; ?>
+
+    <section class="recherche-container">
+        <form action="recherche.php" method="GET" class="barre-recherche">
+            <input type="text" name="q" value="<?= htmlspecialchars($search) ?>" placeholder="Rechercher..." required>
+            <button type="submit">Rechercher</button>
+        </form>
+    </section>
+
+    <?php if (empty($search)): ?>
+        <p class="vide">Saisissez un mot-clé.</p>
+    <?php elseif (empty($articles)): ?>
+        <p class="vide">Aucun résultat pour "<strong><?= htmlspecialchars($search) ?></strong>".</p>
+    <?php else: ?>
+        <p class="compteur"><?= count($articles) ?> résultat(s)</p>
+        
+        <div class="liste-articles">
+            <?php foreach ($articles as $a): ?>
+                <article class="carte-article">
+                    <span class="badge-categorie"><?= htmlspecialchars($a['categorie']) ?></span>
+                    
+                    <h2>
+                        <a href="detail.php?id=<?= $a['id'] ?>">
+                            <?= htmlspecialchars($a['titre']) ?>
+                        </a>
+                    </h2>
+                    
+                    <?php if (!empty($a['image'])): ?>
+                        <img src="/Site_Actu_Dynamique/uploads/<?= htmlspecialchars($a['image']) ?>" alt="" class="article-image-mini">
+                    <?php endif; ?>
+
+                    <p class="description">
+                        <?= htmlspecialchars(mb_strimwidth(strip_tags($a['contenu']), 0, 160, "...")) ?>
+                    </p>
+
+                    <footer class="meta-article">
+                        Par <strong><?= htmlspecialchars($a['auteur']) ?></strong> 
+                        le <?= date('d/m/Y', strtotime($a['date_publication'])) ?>
+                    </footer>
+                </article>
+            <?php endforeach; ?>
+        </div>
+    <?php endif; ?>
+
+    <div style="margin-top: 2rem;">
+        <a href="../accueil.php" class="btn-secondaire">Retour</a>
+    </div>
+</main>
+
+<?php include __DIR__ . '/../pied.php'; ?>
+</body>
+</html>
+C:\xampp\htdocs\Site_Actu_Dynamique>(echo.   & echo ==========================================   & echo FICHIER : C:\xampp\htdocs\Site_Actu_Dynamique\articles\restaurer.php   & echo ==========================================   & type "C:\xampp\htdocs\Site_Actu_Dynamique\articles\restaurer.php" ) 
+ 
+========================================== 
+FICHIER : C:\xampp\htdocs\Site_Actu_Dynamique\articles\restaurer.php 
+========================================== 
+<?php
+require_once __DIR__ . '/../config/db.php';
+require_once __DIR__ . '/../config/session.php';
+autoriser(['editeur', 'administrateur']);
+
+$id = (int)($_GET['id'] ?? 0);
+if ($id > 0) {
+    $pdo = getPDO();
+    $stmt = $pdo->prepare('UPDATE articles SET est_supprime = 0 WHERE id = :id');
+    $stmt->execute([':id' => $id]);
+}
+
+header('Location: corbeille.php?msg=restaure');
+exit;
+C:\xampp\htdocs\Site_Actu_Dynamique>(echo.   & echo ==========================================   & echo FICHIER : C:\xampp\htdocs\Site_Actu_Dynamique\articles\supprimer.php   & echo ==========================================   & type "C:\xampp\htdocs\Site_Actu_Dynamique\articles\supprimer.php" ) 
+ 
+========================================== 
+FICHIER : C:\xampp\htdocs\Site_Actu_Dynamique\articles\supprimer.php 
+========================================== 
+<?php
+require_once __DIR__ . '/../config/db.php';
+require_once __DIR__ . '/../config/session.php';
+
+autoriser(['editeur', 'administrateur']);
+
+$pdo = getPDO();
+$id = (int)($_GET['id'] ?? 0);
+
+if ($id > 0) {
+    try {
+       
+        $stmt = $pdo->prepare('UPDATE articles SET est_supprime = 1 WHERE id = :id');
+        $stmt->execute([':id' => $id]);
+        
+        header('Location: liste.php?status=archived');
+    } catch (PDOException $e) {
+        header('Location: liste.php?status=error');
+    }
+} else {
+    header('Location: liste.php');
+}
+exit;
+C:\xampp\htdocs\Site_Actu_Dynamique>(echo.   & echo ==========================================   & echo FICHIER : C:\xampp\htdocs\Site_Actu_Dynamique\articles\supprimer_definitivement.php   & echo ==========================================   & type "C:\xampp\htdocs\Site_Actu_Dynamique\articles\supprimer_definitivement.php" ) 
+ 
+========================================== 
+FICHIER : C:\xampp\htdocs\Site_Actu_Dynamique\articles\supprimer_definitivement.php 
+========================================== 
+<?php
+require_once __DIR__ . '/../config/db.php';
+require_once __DIR__ . '/../config/session.php';
+autoriser(['administrateur']);
+
+$id = (int)($_GET['id'] ?? 0);
+if ($id > 0) {
+    $pdo = getPDO();
+    
+    $stmtImg = $pdo->prepare('SELECT image FROM articles WHERE id = :id');
+    $stmtImg->execute([':id' => $id]);
+    $img = $stmtImg->fetchColumn();
+    
+    if ($img && file_exists(__DIR__ . '/../uploads/' . $img)) {
+        unlink(__DIR__ . '/../uploads/' . $img);
+    }
+
+    $stmt = $pdo->prepare('DELETE FROM articles WHERE id = :id');
+    $stmt->execute([':id' => $id]);
+}
+
+header('Location: corbeille.php?msg=detruit');
+exit;
+C:\xampp\htdocs\Site_Actu_Dynamique>(echo.   & echo ==========================================   & echo FICHIER : C:\xampp\htdocs\Site_Actu_Dynamique\categories\ajouter.php   & echo ==========================================   & type "C:\xampp\htdocs\Site_Actu_Dynamique\categories\ajouter.php" ) 
+ 
+========================================== 
+FICHIER : C:\xampp\htdocs\Site_Actu_Dynamique\categories\ajouter.php 
+========================================== 
+<?php
+require_once __DIR__ . '/../config/db.php';
+require_once __DIR__ . '/../config/session.php';
+autoriser(['editeur', 'administrateur']);
+$pdo = getPDO(); $erreurs = []; $nom = '';
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+$nom = trim($_POST['nom'] ?? '');
+if (empty($nom)) $erreurs[] = 'Le nom est obligatoire.';
+if (empty($erreurs)) {
+$stmt = $pdo->prepare('INSERT INTO categories (nom) VALUES (:nom)');
+$stmt->execute([':nom' => $nom]);
+header('Location: liste.php'); exit;
+}
+}
+?>
+<!DOCTYPE html>
+<html lang="fr">
+<head><meta charset="UTF-8"><title>Ajouter categorie</title>
+<link rel="stylesheet" href="/Site_Actu_Dynamique/css/style.css"></head>
+<body>
+<?php include __DIR__ . '/../entete.php'; include __DIR__ . '/../menu.php'; ?>
+<main class="container">
+<h1>Ajouter une categorie</h1>
+<?php foreach ($erreurs as $e): ?>
+<div class="alerte erreur"><?= htmlspecialchars($e) ?></div>
+<?php endforeach; ?>
+<form id="fCat" method="post" novalidate>
+<div class="champ">
+<label for="nom">Nom *</label>
+<input type="text" id="nom" name="nom" value="<?= htmlspecialchars($nom) ?>">
+<span class="erreur-js" id="err-nom"></span>
+</div>
+<button type="submit" class="btn-primaire">Ajouter</button>
+<a href="liste.php" class="btn-secondaire">Annuler</a>
+</form>
+</main>
+<?php include __DIR__ . '/../pied.php'; ?>
+<script>
+document.getElementById('fCat').addEventListener('submit', function(e) {
+document.getElementById('err-nom').textContent = '';
+if (!document.getElementById('nom').value.trim()) {
+document.getElementById('err-nom').textContent = 'Le nom est obligatoire.';
+e.preventDefault();
+}
+});
+</script>
+</body></html>
+C:\xampp\htdocs\Site_Actu_Dynamique>(echo.   & echo ==========================================   & echo FICHIER : C:\xampp\htdocs\Site_Actu_Dynamique\categories\liste.php   & echo ==========================================   & type "C:\xampp\htdocs\Site_Actu_Dynamique\categories\liste.php" ) 
+ 
+========================================== 
+FICHIER : C:\xampp\htdocs\Site_Actu_Dynamique\categories\liste.php 
+========================================== 
+<?php
+require_once __DIR__ . '/../config/db.php';
+require_once __DIR__ . '/../config/session.php';
+
+autoriser(['editeur', 'administrateur']);
+
+$pdo = getPDO();
+
+
+$sql = "SELECT c.*, COUNT(a.id) as nb_articles 
+        FROM categories c 
+        LEFT JOIN articles a ON c.id = a.id_categorie AND a.est_supprime = 0
+        GROUP BY c.id 
+        ORDER BY c.nom ASC";
+
+$stmt = $pdo->query($sql);
+$categories = $stmt->fetchAll();
+?>
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>Gestion des Catégories - ESP</title>
+    <link rel="stylesheet" href="/Site_Actu_Dynamique/css/style.css">
+</head>
+<body>
+
+<?php include __DIR__ . '/../entete.php'; ?>
+<?php include __DIR__ . '/../menu.php'; ?>
+
+<main class="container">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+        <h1>Liste des Catégories</h1>
+        <a href="ajouter.php" class="btn-primaire">+ Nouvelle Catégorie</a>
+    </div>
+
+    <?php if (isset($_GET['erreur']) && $_GET['erreur'] == 'pas_vide'): ?>
+        <div class="alerte erreur">Impossible de supprimer : cette catégorie contient des articles actifs.</div>
+    <?php endif; ?>
+
+    <table class="tableau">
+        <thead>
+            <tr>
+                <th>Nom de la catégorie</th>
+                <th style="text-align: center;">Nombre d'articles</th>
+                <th style="text-align: center;">Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            <?php foreach ($categories as $c): ?>
+            <tr>
+                <td><strong><?= htmlspecialchars($c['nom']) ?></strong></td>
+                <td style="text-align: center;">
+                    <span class="badge-categorie"><?= $c['nb_articles'] ?> article(s)</span>
+                </td>
+                <td>
+                    <div class="actions-group" style="justify-content: center;">
+                        <a href="modifier.php?id=<?= $c['id'] ?>" class="btn-edit">Modifier</a>
+                        
+                        <?php if ($c['nb_articles'] == 0): ?>
+                            <a href="supprimer.php?id=<?= $c['id'] ?>" class="btn-delete" 
+                               onclick="return confirm('Supprimer cette catégorie ?')">Supprimer</a>
+                        <?php else: ?>
+                            <span style="color: #9ca3af; font-size: 0.8rem; font-style: italic;">(Non vide)</span>
+                        <?php endif; ?>
+                    </div>
+                </td>
+            </tr>
+            <?php endforeach; ?>
+        </tbody>
+    </table>
+</main>
+
+<?php include __DIR__ . '/../pied.php'; ?>
+</body>
+</html>
+C:\xampp\htdocs\Site_Actu_Dynamique>(echo.   & echo ==========================================   & echo FICHIER : C:\xampp\htdocs\Site_Actu_Dynamique\categories\modifier.php   & echo ==========================================   & type "C:\xampp\htdocs\Site_Actu_Dynamique\categories\modifier.php" ) 
+ 
+========================================== 
+FICHIER : C:\xampp\htdocs\Site_Actu_Dynamique\categories\modifier.php 
+========================================== 
+<?php
+require_once __DIR__ . '/../config/db.php';
+require_once __DIR__ . '/../config/session.php';
+autoriser(['editeur', 'administrateur']);
+$pdo = getPDO(); $id = (int)($_GET['id'] ?? 0);
+$stmt = $pdo->prepare('SELECT * FROM categories WHERE id = :id');
+$stmt->execute([':id' => $id]); $cat = $stmt->fetch();
+if (!$cat) { header('Location: liste.php'); exit; }
+$erreurs = []; $nom = $cat['nom'];
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+$nom = trim($_POST['nom'] ?? '');
+if (empty($nom)) $erreurs[] = 'Le nom est obligatoire.';
+if (empty($erreurs)) {
+$stmt = $pdo->prepare('UPDATE categories SET nom = :nom WHERE id = :id');
+$stmt->execute([':nom' => $nom, ':id' => $id]);
+header('Location: liste.php'); exit;
+}
+}
+?>
+<!DOCTYPE html>
+<html lang="fr">
+<head><meta charset="UTF-8"><title>Modifier categorie</title>
+<link rel="stylesheet" href="/Site_Actu_Dynamique/css/style.css"></head>
+<body>
+<?php include __DIR__ . '/../entete.php'; include __DIR__ . '/../menu.php'; ?>
+<main class="container">
+<h1>Modifier la categorie</h1>
+<?php foreach ($erreurs as $e): ?>
+<div class="alerte erreur"><?= htmlspecialchars($e) ?></div>
+<?php endforeach; ?>
+<form method="post">
+<div class="champ">
+<label>Nom *</label>
+<input type="text" name="nom" value="<?= htmlspecialchars($nom) ?>">
+</div>
+<button type="submit" class="btn-primaire">Enregistrer</button>
+<a href="liste.php" class="btn-secondaire">Annuler</a>
+</form>
+</main>
+<?php include __DIR__ . '/../pied.php'; ?>
+</body></html>
+
+C:\xampp\htdocs\Site_Actu_Dynamique>(echo.   & echo ==========================================   & echo FICHIER : C:\xampp\htdocs\Site_Actu_Dynamique\categories\supprimer.php   & echo ==========================================   & type "C:\xampp\htdocs\Site_Actu_Dynamique\categories\supprimer.php" ) 
+ 
+========================================== 
+FICHIER : C:\xampp\htdocs\Site_Actu_Dynamique\categories\supprimer.php 
+========================================== 
+<?php
+require_once __DIR__ . '/../config/db.php';
+require_once __DIR__ . '/../config/session.php';
+autoriser(['administrateur']); 
+
+$pdo = getPDO();
+$id = (int)($_GET['id'] ?? 0);
+
+if ($id > 0) {
+    $check = $pdo->prepare("SELECT COUNT(*) FROM articles WHERE id_categorie = :id AND est_supprime = 0");
+    $check->execute([':id' => $id]);
+    $count = $check->fetchColumn();
+
+    if ($count == 0) {
+        $stmt = $pdo->prepare("DELETE FROM categories WHERE id = :id");
+        $stmt->execute([':id' => $id]);
+        header('Location: liste.php?msg=supprime');
+    } else {
+        header('Location: liste.php?erreur=pas_vide');
+    }
+} else {
+    header('Location: liste.php');
+}
+exit;
+C:\xampp\htdocs\Site_Actu_Dynamique>(echo.   & echo ==========================================   & echo FICHIER : C:\xampp\htdocs\Site_Actu_Dynamique\config\db.php   & echo ==========================================   & type "C:\xampp\htdocs\Site_Actu_Dynamique\config\db.php" ) 
+ 
+========================================== 
+FICHIER : C:\xampp\htdocs\Site_Actu_Dynamique\config\db.php 
+========================================== 
+<?php
+define('DB_HOST',    'localhost');
+define('DB_NAME',    'site_actualite');
+define('DB_USER',    'root');
+define('DB_PASS',    ''); 
+define('DB_CHARSET', 'utf8mb4');
+
+
+function getPDO(): PDO
+{
+    static $pdo = null;
+    
+    if ($pdo === null) {
+        $dsn = 'mysql:host=' . DB_HOST . ';dbname=' . DB_NAME . ';charset=' . DB_CHARSET;
+        
+        $options = [
+            PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION, 
+            PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,       
+            PDO::ATTR_EMULATE_PREPARES   => false,                
+        ];
+
+        try {
+            $pdo = new PDO($dsn, DB_USER, DB_PASS, $options);
+        } catch (PDOException $e) {
+            
+            die('Erreur de connexion : ' . $e->getMessage());
+        }
+    }
+    
+    return $pdo;
+}
+C:\xampp\htdocs\Site_Actu_Dynamique>(echo.   & echo ==========================================   & echo FICHIER : C:\xampp\htdocs\Site_Actu_Dynamique\config\session.php   & echo ==========================================   & type "C:\xampp\htdocs\Site_Actu_Dynamique\config\session.php" ) 
+ 
+========================================== 
+FICHIER : C:\xampp\htdocs\Site_Actu_Dynamique\config\session.php 
+========================================== 
+<?php
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+
+function autoriser(array $roles) 
+{
+    if (!isset($_SESSION['utilisateur'])) {
+        header('Location: /Site_Actu_Dynamique/connexion.php');
+        exit;
+    }
+
+    if (!in_array($_SESSION['utilisateur']['role'], $roles, true)) {
+        http_response_code(403);
+        die("<h1>Accès refusé</h1><p>Désolé, votre rôle ne permet pas d'accéder à cette page.</p><a href='/Site_Actu_Dynamique/accueil.php'>Retour</a>");
+    }
+}
+
+function estConnecte(): bool
+{
+    return isset($_SESSION['utilisateur']);
+}
+
+function getRoleUtilisateur(): ?string
+{
+    return $_SESSION['utilisateur']['role'] ?? null;
+}
+C:\xampp\htdocs\Site_Actu_Dynamique>(echo.   & echo ==========================================   & echo FICHIER : C:\xampp\htdocs\Site_Actu_Dynamique\css\style.css   & echo ==========================================   & type "C:\xampp\htdocs\Site_Actu_Dynamique\css\style.css" ) 
+ 
+========================================== 
+FICHIER : C:\xampp\htdocs\Site_Actu_Dynamique\css\style.css 
+========================================== 
+*, *::before, *::after { 
+    box-sizing: border-box; 
+    margin: 0; 
+    padding: 0; 
+}
+
+body {
+    font-family: 'Segoe UI', Arial, sans-serif;
+    background: #f0f2f5;
+    color: #2d2d2d;
+    line-height: 1.6;
+}
+
+a { color: #0056b3; text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+.container { max-width: 1100px; margin: 0 auto; padding: 0 1.5rem; }
+
+.entete {
+    background: url('/Site_Actu_Dynamique/images/etudiants_esp.jpg') no-repeat center center;
+    background-size: cover;
+    position: relative;
+}
+.entete::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(15, 23, 42, 0.7); 
+    z-index: 1; 
+}
+.entete .container {
+    position: relative;
+    z-index: 2; 
+    padding: 2rem 0;
+}
+.entete .logo { color: #fff; font-size: 1.5rem; font-weight: 700; }
+.entete .sous-titre { color: #8892b0; font-size: 0.9rem; }
+
+.menu { 
+    background: #16213e; 
+    padding: 0.5rem 0; 
+    position: sticky; 
+    top: 0; 
+    z-index: 100;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.3); 
+}
+.menu .container { display: flex; justify-content: space-between; align-items: center; }
+.menu ul { list-style: none; display: flex; gap: 0.3rem; }
+.menu ul a { color: #cdd6f4; padding: 0.45rem 0.9rem; border-radius: 5px; font-size: 0.93rem; }
+.menu ul a:hover { background: #0f3460; text-decoration: none; color: #fff; }
+
+.menu-droite { display: flex; align-items: center; gap: 1rem; }
+.bienvenue { color: #8892b0; font-size: 0.88rem; }
+.btn-connexion, .btn-deconnexion { 
+    background: #e94560; 
+    color: #fff;
+    padding: 0.35rem 0.9rem; 
+    border-radius: 5px; 
+    font-size: 0.88rem; 
+    border: none;
+    cursor: pointer;
+}
+
+main { padding: 2rem 0; min-height: 75vh; }
+h1 { 
+    font-size: 1.75rem; 
+    margin-bottom: 1.2rem; 
+    color: #1a1a2e;
+    border-bottom: 3px solid #0056b3; 
+    padding-bottom: 0.5rem; 
+}
+
+.liste-articles { display: flex; flex-direction: column; gap: 1.2rem; }
+.carte-article { 
+    background: #fff; 
+    border-radius: 8px; 
+    padding: 1.4rem;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.07); 
+    border-left: 4px solid #0056b3;
+    transition: transform 0.15s, box-shadow 0.15s; 
+}
+.carte-article:hover { transform: translateY(-2px); box-shadow: 0 6px 16px rgba(0,0,0,0.1); }
+.carte-article h2 { font-size: 1.2rem; margin: 0.5rem 0; }
+.description { color: #555; margin-bottom: 0.8rem; font-size: 0.97rem; }
+.meta-article { font-size: 0.83rem; color: #888; }
+
+.article-image {
+    display: block;
+    width: auto;
+    max-width: 100%;
+    height: auto;
+    max-height: 400px;
+    margin: 20px auto;
+    border-radius: 8px;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+    object-fit: contain;
+}
+
+@media (max-width: 768px) {
+    .article-image {
+        max-height: 250px;
+    }
+}
+
+.form-wrapper { max-width: 480px; margin: 0 auto; background: #fff; padding: 2rem; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
+.champ { margin-bottom: 1.2rem; }
+.champ label { display: block; font-weight: 600; margin-bottom: 0.4rem; font-size: 0.93rem; color: #374151; }
+.champ input, .champ textarea, .champ select { 
+    width: 100%; 
+    padding: 0.6rem 0.9rem;
+    border: 1px solid #cbd5e1; 
+    border-radius: 6px; 
+    font-size: 0.97rem;
+    font-family: inherit;
+}
+
+.btn-primaire { 
+    display: inline-block; 
+    background: #0056b3; 
+    color: #fff;
+    padding: 0.55rem 1.3rem; 
+    border-radius: 6px; 
+    border: none;
+    cursor: pointer; 
+}
+
+.alerte { padding: 0.8rem 1rem; border-radius: 6px; margin-bottom: 1rem; }
+.alerte.erreur { background: #fee2e2; color: #991b1b; border: 1px solid #fca5a5; }
+.alerte.succes { background: #dcfce7; color: #166534; border: 1px solid #86efac; }
+
+.badge-categorie { 
+    background: #eef2ff; 
+    color: #261fea; 
+    padding: 4px 10px; 
+    border-radius: 20px; 
+    font-size: 0.85rem; 
+    font-weight: bold; 
+}
+.barre-recherche {
+    display: flex;
+    gap: 10px;
+    margin: 0 auto 2rem auto; 
+    background: #fff;
+    padding: 1.2rem;
+    border-radius: 8px;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+    max-width: 100%;
+    width: 100%;
+}
+
+.barre-recherche input {
+    flex: 1; 
+    padding: 0.8rem 1.2rem;
+    border: 1px solid #cbd5e1;
+    border-radius: 6px;
+    font-size: 1rem;
+    outline: none;
+    transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.barre-recherche input:focus {
+    border-color: #0056b3;
+    box-shadow: 0 0 0 3px rgba(0,86,179,0.1);
+}
+
+.barre-recherche button {
+    background: #261fea;
+    color: white;
+    border: none;
+    padding: 0 2rem; 
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 600;
+    transition: background 0.2s;
+}
+
+.barre-recherche button:hover {
+    background: #1a15c7;
+}
+
+.pagination {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 8px;           
+    margin: 3rem 0;     
+}
+
+.pagination a, .pagination span {
+    display: inline-flex;
+    justify-content: center;
+    align-items: center;
+    min-width: 40px;
+    height: 40px;
+    padding: 0 10px;
+    border-radius: 6px;
+    background: #fff;
+    color: #16213e;     
+    text-decoration: none;
+    font-weight: 600;
+    font-size: 0.95rem;
+    border: 1px solid #cbd5e1;
+    transition: all 0.2s ease;
+}
+
+.pagination a:hover {
+    background: #f0f2f5;
+    border-color: #0056b3;
+    color: #0056b3;
+    transform: translateY(-2px);
+}
+
+.pagination .actif, 
+.pagination span.current, 
+.pagination a.active {
+    background: #261fea; 
+    color: #ffffff !important;
+    border-color: #261fea;
+    cursor: default;
+}
+
+.pagination .prev, .pagination .next {
+    padding: 0 15px;
+    background: #1a1a2e;
+    color: #fff;
+    border: none;
+}
+
+.pagination .prev:hover, .pagination .next:hover {
+    background: #0f3460;
+    color: #fff;
+}
+.pied { background: #1a1a2e; color: #8892b0; text-align: center; padding: 1.2rem; margin-top: 3rem; }
+
+.tableau {
+    width: 100%;
+    border-collapse: collapse;
+    background: #fff;
+    border-radius: 10px;
+    overflow: hidden; 
+    box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+    margin-top: 1.5rem;
+}
+
+.tableau thead {
+    background: #1a1a2e; 
+    color: #ffffff;
+}
+
+.tableau th {
+    padding: 1.2rem 1rem;
+    text-align: left;
+    font-size: 0.9rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    font-weight: 600;
+}
+
+.tableau td {
+    padding: 1rem;
+    border-bottom: 1px solid #f0f2f5;
+    color: #4b5563;
+    font-size: 0.95rem;
+    vertical-align: middle;
+}
+
+.tableau tbody tr:hover {
+    background-color: #f8fafc;
+    transition: background 0.2s ease;
+}
+
+.actions-group {
+    display: flex;
+    gap: 8px;
+}
+
+.btn-edit, .btn-delete {
+    padding: 6px 12px;
+    border-radius: 4px;
+    font-size: 0.85rem;
+    font-weight: 500;
+    text-decoration: none !important;
+}
+
+.btn-edit {
+    background: #eef2ff;
+    color: #4f46e5;
+    border: 1px solid #e0e7ff;
+}
+
+.btn-edit:hover { background: #e0e7ff; }
+
+.btn-delete {
+    background: #fff1f2;
+    color: #e11d48;
+    border: 1px solid #ffe4e6;
+}
+
+.btn-delete:hover { background: #ffe4e6; }
+
+.cat-tag {
+    background: #f3f4f6;
+    padding: 4px 8px;
+    border-radius: 6px;
+    font-size: 0.8rem;
+    color: #374151;
+}
+.entete .logo-groupe {
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+}
+
+.entete .icone-journal {
+    font-size: 2.5rem;
+}
+
+.entete .texte-logo {
+    display: flex;
+    flex-direction: column;
+}
+
+.entete .titre-site {
+    font-size: 2rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin: 0;
+    line-height: 1;
+    color: #fff;
+}
+
+.entete .slogan-site {
+    color: #8892b0; 
+    font-size: 0.9rem;
+    margin-top: 0.3rem;
+}
+
+.entete .slogan-site strong {
+    color: #fff;
+    font-weight: 600;
+}
+
+.pied-page {
+    background: #1a1a2e; 
+    color: #8892b0;
+    padding: 3rem 0 1.5rem 0;
+    margin-top: 4rem;
+    border-top: 1px solid #16213e;
+}
+
+.footer-grid {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 2rem;
+    margin-bottom: 2rem;
+    padding-bottom: 2rem;
+    border-bottom: 1px solid #16213e;
+}
+
+.footer-section h3 {
+    color: #fff;
+    margin-bottom: 1rem;
+    font-size: 1.1rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.footer-section p {
+    max-width: 400px;
+    font-size: 0.9rem;
+}
+
+.footer-links {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+}
+
+.footer-links a {
+    color: #8892b0;
+    font-size: 0.9rem;
+    transition: color 0.2s;
+}
+
+.footer-links a:hover {
+    color: #e94560; 
+    text-decoration: none;
+}
+
+.footer-bottom {
+    text-align: center;
+    padding-top: 1rem;
+}
+
+.footer-bottom strong {
+    color: #fff;
+}
+
+.footer-note {
+    font-size: 0.8rem;
+    margin-top: 0.5rem;
+    opacity: 0.6;
+    font-style: italic;
+}
+
+@media (max-width: 768px) {
+    .footer-grid {
+        flex-direction: column;
+        text-align: center;
+    }
+    .footer-section p {
+        margin: 0 auto;
+    }
+    .entete .logo-groupe {
+        flex-direction: column;
+        text-align: center;
+        gap: 0.5rem;
+    }
+}
+.entete .logo-groupe {
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+    padding: 1rem 0;
+}
+
+.entete .titre-site {
+    margin: 0;
+    color: #fff;
+    font-size: 2.2rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    line-height: 1.1;
+}
+
+.entete .slogan-site {
+    margin: 0;
+    color: #8892b0;
+    font-size: 0.95rem;
+}
+
+.entete {
+    border-bottom: 3px solid #0056b3; 
+}
+
+
+.icone-journal {
+    font-size: 0 !important; 
+}
+
+.icone-journal::before {
+    content: ''; 
+    font-size: 2.5rem;
+}
+
+.logo-groupe {
+    display: flex;
+    align-items: center; 
+    gap: 1rem;                   
+}
+
+/* --- AJOUT : STYLES FILTRES CATÉGORIES (MODERN UI) --- */
+.filter-wrapper {
+    margin: 1.5rem 0;
+    padding: 1.2rem;
+    background: #fff;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+}
+
+.filter-label {
+    font-weight: 700;
+    margin-bottom: 1rem;
+    display: block;
+    color: #1a1a2e;
+    font-size: 0.95rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.filter-group {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.filter-pill {
+    display: inline-flex;
+    align-items: center;
+    padding: 7px 15px;
+    background-color: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 25px;
+    text-decoration: none !important;
+    color: #475569;
+    font-size: 0.9rem;
+    font-weight: 600;
+    transition: all 0.2s ease;
+}
+
+.filter-pill:hover {
+    border-color: #261fea;
+    color: #261fea;
+    background-color: #f0f7ff;
+    transform: translateY(-1px);
+}
+
+.filter-pill.active {
+    background-color: #261fea;
+    color: #ffffff;
+    border-color: #261fea;
+    box-shadow: 0 4px 10px rgba(38, 31, 234, 0.2);
+}
+
+.pill-count {
+    margin-left: 8px;
+    font-size: 0.75rem;
+    background-color: rgba(0, 0, 0, 0.06);
+    padding: 2px 7px;
+    border-radius: 12px;
+    opacity: 0.8;
+}
+
+.filter-pill.active .pill-count {
+    background-color: rgba(255, 255, 255, 0.2);
+    color: #ffffff;
+    opacity: 1;
+}
+
+@media (max-width: 600px) {
+    .filter-wrapper { padding: 1rem; }
+    .filter-pill { padding: 6px 12px; font-size: 0.85rem; }
+}
+/* --- GRILLE D'ACTUALITÉS "À LA UNE" --- */
+.articles-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); /* Crée 3 colonnes sur PC */
+    gap: 25px;
+    margin-top: 20px;
+}
+
+.card {
+    background: #fff;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+    transition: all 0.3s ease;
+    display: flex;
+    flex-direction: column;
+    border: 1px solid #e2e8f0;
+}
+
+.card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 20px rgba(0,0,0,0.15);
+}
+
+.card-image {
+    position: relative;
+    height: 190px;
+    background: #edf2f7;
+}
+
+.card-image img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover; /* Important : l'image remplit le cadre sans se déformer */
+}
+
+.card-badge {
+    position: absolute;
+    top: 12px;
+    left: 12px;
+    background: #261fea;
+    color: #fff;
+    padding: 4px 10px;
+    border-radius: 15px;
+    font-size: 0.75rem;
+    font-weight: bold;
+}
+
+.card-content {
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    flex-grow: 1;
+}
+
+.card-content h2 {
+    font-size: 1.15rem;
+    line-height: 1.4;
+    margin-bottom: 10px;
+}
+
+.card-content h2 a {
+    color: #1a1a2e;
+    text-decoration: none !important;
+}
+
+.card-excerpt {
+    color: #64748b;
+    font-size: 0.9rem;
+    margin-bottom: 20px;
+}
+
+.card-meta {
+    margin-top: auto;
+    padding-top: 12px;
+    border-top: 1px solid #f1f5f9;
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.8rem;
+    color: #94a3b8;
+}
+
+/* Adaptation Mobile */
+@media (max-width: 768px) {
+    .articles-grid { grid-template-columns: 1fr; }
+}
+.main-featured {
+    background: #fff;
+    border-radius: 10px;
+    box-shadow: 0 5px 20px rgba(0,0,0,0.08);
+    margin-bottom: 40px;
+    overflow: hidden;
+    position: relative;
+    border: 1px solid #eee;
+}
+
+.featured-badge {
+    position: absolute;
+    top: 20px;
+    left: 20px;
+    background: #e74c3c; /* Rouge pour l'urgence */
+    color: white;
+    padding: 5px 15px;
+    font-weight: bold;
+    z-index: 10;
+    border-radius: 4px;
+}
+
+.featured-flex {
+    display: flex;
+    flex-wrap: wrap;
+}
+
+.featured-img {
+    flex: 1;
+    min-width: 300px;
+    height: 400px;
+}
+
+.featured-img img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.featured-text {
+    flex: 1;
+    padding: 40px;
+    min-width: 300px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.cat-tag {
+    color: #007bff;
+    text-transform: uppercase;
+    font-weight: bold;
+    font-size: 0.9rem;
+}
+
+.featured-text h1 {
+    font-size: 2rem;
+    margin: 15px 0;
+    line-height: 1.2;
+}
+
+.btn-primary {
+    display: inline-block;
+    background: #007bff;
+    color: white;
+    padding: 10px 25px;
+    border-radius: 5px;
+    text-decoration: none;
+    margin-top: 20px;
+    width: fit-content;
+}
+
+/* Titre de section */
+.section-title {
+    margin-bottom: 25px;
+    padding-bottom: 10px;
+    border-bottom: 3px solid #007bff;
+    display: inline-block;
+}
+/* --- OPTIMISATIONS FINALES RESPONSIVE --- */
+
+/* Empêche le tableau de casser la mise en page sur petit écran */
+.tableau {
+    display: table; /* Garde le comportement table par défaut */
+    width: 100%;
+}
+
+/* Conteneur de secours si le tableau est trop large */
+main {
+    overflow-x: hidden; /* Évite le scroll horizontal de toute la page */
+}
+
+@media (max-width: 768px) {
+    /* Rend le tableau défilable horizontalement sur mobile */
+    .tableau {
+        display: block;
+        overflow-x: auto;
+        white-space: nowrap;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    /* Optimisation des filtres : défilement horizontal fluide */
+    .filter-group {
+        display: flex;
+        flex-wrap: nowrap;
+        overflow-x: auto;
+        gap: 8px;
+        padding-bottom: 5px;
+        scrollbar-width: none; /* Cache la barre sur Firefox */
+    }
+    
+    .filter-group::-webkit-scrollbar {
+        display: none; /* Cache la barre sur Chrome/Safari */
+    }
+
+    .filter-pill {
+        flex: 0 0 auto; /* Empêche les pilules de rétrécir */
+    }
+}
+C:\xampp\htdocs\Site_Actu_Dynamique>(echo.   & echo ==========================================   & echo FICHIER : C:\xampp\htdocs\Site_Actu_Dynamique\js\validation.js   & echo ==========================================   & type "C:\xampp\htdocs\Site_Actu_Dynamique\js\validation.js" ) 
+ 
+========================================== 
+FICHIER : C:\xampp\htdocs\Site_Actu_Dynamique\js\validation.js 
+========================================== 
+
+/**
+ * @param {string} id 
+ * @param {string} errId 
+ * @param {string} msg 
+ * @returns {boolean}
+ */
+function validerChamp(id, errId, msg) {
+  const val = document.getElementById(id)?.value.trim();
+  const err = document.getElementById(errId);
+  if (err) err.textContent = "";
+  if (!val) {
+    if (err) err.textContent = msg;
+    return false;
+  }
+  return true;
+}
+function validerMotsDePasse(id1, id2, errId) {
+  const v1 = document.getElementById(id1)?.value;
+  const v2 = document.getElementById(id2)?.value;
+  const err = document.getElementById(errId);
+  if (err) err.textContent = "";
+  if (v1.length < 6) {
+    if (err) err.textContent = "Minimum 6 caracteres requis.";
+    return false;
+  }
+  if (v1 !== v2) {
+    if (err) err.textContent = "Les mots de passe ne correspondent pas.";
+    return false;
+  }
+  return true;
+}
+
+function reinitialiserErreurs(formId) {
+  const form = document.getElementById(formId);
+  if (!form) return;
+  form.querySelectorAll(".erreur-js").forEach((el) => (el.textContent = ""));
+}
+
+C:\xampp\htdocs\Site_Actu_Dynamique>(echo.   & echo ==========================================   & echo FICHIER : C:\xampp\htdocs\Site_Actu_Dynamique\utilisateurs\ajouter.php   & echo ==========================================   & type "C:\xampp\htdocs\Site_Actu_Dynamique\utilisateurs\ajouter.php" ) 
+ 
+========================================== 
+FICHIER : C:\xampp\htdocs\Site_Actu_Dynamique\utilisateurs\ajouter.php 
+========================================== 
+<?php
+require_once __DIR__ . '/../config/db.php';
+require_once __DIR__ . '/../config/session.php';
+autoriser(['administrateur']);
+$pdo = getPDO(); $erreurs = [];
+$d = ['nom'=>'','prenom'=>'','login'=>'','role'=>'editeur'];
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+$d['nom'] = trim($_POST['nom'] ?? '');
+$d['prenom'] = trim($_POST['prenom'] ?? '');
+$d['login'] = trim($_POST['login'] ?? '');
+$d['role'] = $_POST['role'] ?? 'editeur';
+$mdp = $_POST['mot_de_passe'] ?? '';
+$mdp2 = $_POST['mdp_confirm'] ?? '';
+if (empty($d['nom'])) $erreurs[] = 'Le nom est obligatoire.';
+if (empty($d['prenom'])) $erreurs[] = 'Le prenom est obligatoire.';
+if (empty($d['login'])) $erreurs[] = 'Le login est obligatoire.';
+if (strlen($mdp) < 6) $erreurs[] = 'Mot de passe : 6 caracteres minimum.';
+if ($mdp !== $mdp2) $erreurs[] = 'Les mots de passe ne correspondent pas.';
+if (empty($erreurs)) {
+$stmt = $pdo->prepare(
+'INSERT INTO utilisateurs (nom,prenom,login,mot_de_passe,role)
+VALUES (:nom,:prenom,:login,:mdp,:role)'
+);
+$stmt->execute([':nom'=>$d['nom'],':prenom'=>$d['prenom'],
+':login'=>$d['login'],':mdp'=>password_hash($mdp,PASSWORD_BCRYPT),
+':role'=>$d['role']]);
+header('Location: liste.php'); exit;
+}
+}
+?>
+<!DOCTYPE html>
+<html lang="fr">
+<head><meta charset="UTF-8"><title>Ajouter utilisateur</title>
+<link rel="stylesheet" href="/Site_Actu_Dynamique/css/style.css"></head>
+<body>
+<?php include __DIR__ . '/../entete.php'; include __DIR__ . '/../menu.php'; ?>
+<main class="container">
+<h1>Ajouter un utilisateur</h1>
+<?php foreach ($erreurs as $e): ?>
+<div class="alerte erreur"><?= htmlspecialchars($e) ?></div>
+<?php endforeach; ?>
+<form id="fUser" method="post" novalidate>
+<div class="champ"><label>Nom *</label>
+<input type="text" name="nom" value="<?= htmlspecialchars($d['nom']) ?>"></div>
+<div class="champ"><label>Prenom *</label>
+<input type="text" name="prenom" value="<?= htmlspecialchars($d['prenom']) ?>"></div>
+<div class="champ"><label>Login *</label>
+<input type="text" name="login" value="<?= htmlspecialchars($d['login']) ?>"></div>
+<div class="champ">
+<label>Mot de passe * (min. 6 caracteres)</label>
+<input type="password" id="mdp" name="mot_de_passe">
+<span class="erreur-js" id="err-mdp"></span>
+</div>
+<div class="champ">
+<label>Confirmer le mot de passe *</label>
+<input type="password" id="mdp2" name="mdp_confirm">
+<span class="erreur-js" id="err-mdp2"></span>
+</div>
+<div class="champ"><label>Role</label>
+<select name="role">
+<option value="editeur" <?= $d['role']==='editeur'?'selected':'' ?>>Editeur</option>
+<option value="administrateur" <?= $d['role']==='administrateur'?'selected':''
+?>>Administrateur</option>
+</select></div>
+<button type="submit" class="btn-primaire">Creer</button>
+<a href="liste.php" class="btn-secondaire">Annuler</a>
+</form>
+</main>
+<?php include __DIR__ . '/../pied.php'; ?>
+<script>
+document.getElementById('fUser').addEventListener('submit', function(e) {
+let ok = true;
+const mdp = document.getElementById('mdp').value;
+const mdp2 = document.getElementById('mdp2').value;
+document.getElementById('err-mdp').textContent = '';
+document.getElementById('err-mdp2').textContent = '';
+if (mdp.length < 6) {
+document.getElementById('err-mdp').textContent = 'Minimum 6 caracteres.'; ok = false;
+}
+if (mdp !== mdp2) {
+document.getElementById('err-mdp2').textContent = 'Les mots de passe ne correspondent pas.'; ok
+= false;
+}
+if (!ok) e.preventDefault();
+});
+</script>
+</body></html>
+C:\xampp\htdocs\Site_Actu_Dynamique>(echo.   & echo ==========================================   & echo FICHIER : C:\xampp\htdocs\Site_Actu_Dynamique\utilisateurs\liste.php   & echo ==========================================   & type "C:\xampp\htdocs\Site_Actu_Dynamique\utilisateurs\liste.php" ) 
+ 
+========================================== 
+FICHIER : C:\xampp\htdocs\Site_Actu_Dynamique\utilisateurs\liste.php 
+========================================== 
+<?php
+require_once __DIR__ . '/../config/db.php';
+require_once __DIR__ . '/../config/session.php';
+autoriser(['administrateur']);
+$pdo = getPDO();
+$users = $pdo->query('SELECT id, nom, prenom, login, role FROM utilisateurs ORDER BY
+nom')->fetchAll();
+?>
+<!DOCTYPE html>
+<html lang="fr">
+<head><meta charset="UTF-8"><title>Utilisateurs</title>
+<link rel="stylesheet" href="/Site_Actu_Dynamique/css/style.css"></head>
+<body>
+<?php include __DIR__ . '/../entete.php'; include __DIR__ . '/../menu.php'; ?>
+<main class="container">
+<h1>Gestion des utilisateurs</h1>
+<a href="ajouter.php" class="btn-primaire">+ Nouvel utilisateur</a>
+<table class="tableau">
+<thead><tr><th>Nom</th><th>Prenom</th><th>Login</th><th>Role</th><th>Actions</th></tr></thead>
+<tbody>
+<?php foreach ($users as $u): ?>
+<tr>
+<td><?= htmlspecialchars($u['nom']) ?></td>
+<td><?= htmlspecialchars($u['prenom']) ?></td>
+<td><?= htmlspecialchars($u['login']) ?></td>
+<td><?= htmlspecialchars($u['role']) ?></td>
+<td>
+<a href="modifier.php?id=<?= $u['id'] ?>" class="btn-secondaire">Modifier</a>
+<?php if ($u['id'] != $_SESSION['utilisateur']['id']): ?>
+<a href="supprimer.php?id=<?= $u['id'] ?>" class="btn-danger"
+onclick="return confirm('Supprimer ?')">Supprimer</a>
+<?php endif; ?>
+</td>
+</tr>
+<?php endforeach; ?>
+</tbody>
+</table>
+</main>
+<?php include __DIR__ . '/../pied.php'; ?>
+</body></html>
+C:\xampp\htdocs\Site_Actu_Dynamique>(echo.   & echo ==========================================   & echo FICHIER : C:\xampp\htdocs\Site_Actu_Dynamique\utilisateurs\modifier.php   & echo ==========================================   & type "C:\xampp\htdocs\Site_Actu_Dynamique\utilisateurs\modifier.php" ) 
+ 
+========================================== 
+FICHIER : C:\xampp\htdocs\Site_Actu_Dynamique\utilisateurs\modifier.php 
+========================================== 
+<?php
+require_once __DIR__ . '/../config/db.php';
+require_once __DIR__ . '/../config/session.php';
+autoriser(['administrateur']);
+$pdo = getPDO(); $id = (int)($_GET['id'] ?? 0);
+$stmt = $pdo->prepare('SELECT * FROM utilisateurs WHERE id = :id');
+$stmt->execute([':id' => $id]); $user = $stmt->fetch();
+if (!$user) { header('Location: liste.php'); exit; }
+$erreurs = [];
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+$nom = trim($_POST['nom'] ?? '');
+$prenom = trim($_POST['prenom'] ?? '');
+$login = trim($_POST['login'] ?? '');
+$role = $_POST['role'] ?? 'editeur';
+$mdp = $_POST['mot_de_passe'] ?? '';
+if (empty($nom)) $erreurs[] = 'Le nom est obligatoire.';
+if (empty($prenom)) $erreurs[] = 'Le prenom est obligatoire.';
+if (empty($login)) $erreurs[] = 'Le login est obligatoire.';
+if (empty($erreurs)) {
+if (!empty($mdp)) {
+$stmt = $pdo->prepare('UPDATE utilisateurs SET
+nom=:nom,prenom=:prenom,login=:login,role=:role,mot_de_passe=:mdp WHERE id=:id');
+$stmt->execute([':nom'=>$nom,':prenom'=>$prenom,':login'=>$login,':role'=>$role,
+':mdp'=>password_hash($mdp,PASSWORD_BCRYPT),':id'=>$id]);
+} else {
+$stmt = $pdo->prepare('UPDATE utilisateurs SET nom=:nom,prenom=:prenom,login=:login,role=:role
+WHERE id=:id');
+$stmt->execute([':nom'=>$nom,':prenom'=>$prenom,':login'=>$login,':role'=>$role,':id'=>$id]);
+}
+header('Location: liste.php'); exit;
+}
+} else {
+$nom=$user['nom']; $prenom=$user['prenom']; $login=$user['login']; $role=$user['role'];
+}
+?>
+<!DOCTYPE html>
+<html lang="fr">
+<head><meta charset="UTF-8"><title>Modifier utilisateur</title>
+<link rel="stylesheet" href="/Site_Actu_Dynamique/css/style.css"></head>
+<body>
+<?php include __DIR__ . '/../entete.php'; include __DIR__ . '/../menu.php'; ?>
+<main class="container">
+<h1>Modifier l'utilisateur</h1>
+<?php foreach ($erreurs as $e): ?>
+<div class="alerte erreur"><?= htmlspecialchars($e) ?></div>
+<?php endforeach; ?>
+<form method="post">
+<div class="champ"><label>Nom *</label>
+<input type="text" name="nom" value="<?= htmlspecialchars($nom) ?>"></div>
+<div class="champ"><label>Prenom *</label>
+<input type="text" name="prenom" value="<?= htmlspecialchars($prenom) ?>"></div>
+<div class="champ"><label>Login *</label>
+<input type="text" name="login" value="<?= htmlspecialchars($login) ?>"></div>
+<div class="champ">
+<label>Nouveau mot de passe (vide = inchange)</label>
+<input type="password" name="mot_de_passe">
+</div>
+<div class="champ"><label>Role</label>
+<select name="role">
+<option value="editeur" <?= $role==='editeur'?'selected':'' ?>>Editeur</option>
+<option value="administrateur" <?= $role==='administrateur'?'selected':''
+?>>Administrateur</option>
+</select></div>
+<button type="submit" class="btn-primaire">Enregistrer</button>
+<a href="liste.php" class="btn-secondaire">Annuler</a>
+</form>
+</main>
+<?php include __DIR__ . '/../pied.php'; ?>
+</body></html>
+
+C:\xampp\htdocs\Site_Actu_Dynamique>(echo.   & echo ==========================================   & echo FICHIER : C:\xampp\htdocs\Site_Actu_Dynamique\utilisateurs\supprimer.php   & echo ==========================================   & type "C:\xampp\htdocs\Site_Actu_Dynamique\utilisateurs\supprimer.php" ) 
+ 
+========================================== 
+FICHIER : C:\xampp\htdocs\Site_Actu_Dynamique\utilisateurs\supprimer.php 
+========================================== 
+<?php
+require_once __DIR__ . '/../config/db.php';
+require_once __DIR__ . '/../config/session.php';
+autoriser(['administrateur']);
+$pdo = getPDO(); $id = (int)($_GET['id'] ?? 0);
+if ($id > 0 && $id !== (int)$_SESSION['utilisateur']['id']) {
+$stmt = $pdo->prepare('DELETE FROM utilisateurs WHERE id = :id');
+$stmt->execute([':id' => $id]);
+}
+header('Location: liste.php');
+exit;

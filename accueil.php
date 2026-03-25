@@ -3,14 +3,13 @@ require_once __DIR__ . '/config/db.php';
 require_once __DIR__ . '/config/session.php';
 
 $pdo           = getPDO();
-$par_page      = 6; // Augmenté à 6 pour un plus joli rendu en grille (3x2)
+$par_page      = 6; 
 $page_courante = max(1, (int)($_GET['page'] ?? 1));
 $offset        = ($page_courante - 1) * $par_page;
 
 $total    = (int)$pdo->query('SELECT COUNT(*) FROM articles WHERE est_supprime = 0')->fetchColumn();
 $nb_pages = (int)ceil($total / $par_page);
 
-// Ajout de a.image dans la requête SQL
 $stmt = $pdo->prepare(
     'SELECT a.id, a.titre, a.description_courte, a.date_publication, a.image,
             c.nom AS categorie, c.id AS id_categorie,
@@ -26,6 +25,11 @@ $stmt->bindValue(':limite', $par_page, PDO::PARAM_INT);
 $stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
 $stmt->execute();
 $articles = $stmt->fetchAll();
+
+$article_une = null;
+if ($page_courante === 1 && !empty($articles)) {
+    $article_une = array_shift($articles); 
+}
 
 $categories = $pdo->query(
     'SELECT c.id, c.nom, COUNT(a.id) as total_articles
@@ -54,43 +58,51 @@ $categories = $pdo->query(
         <input type="text" name="q" placeholder="Rechercher un article..." required>
         <button type="submit">Rechercher</button>
     </form>
-<!-- 
+
     <div class="filter-wrapper">
-        <span class="filter-label">Catégories :</span>
+        <span class="filter-label">Explorer par catégorie :</span>
         <div class="filter-group">
-            <a href="/Site_Actu_Dynamique/accueil.php" class="filter-pill active">Toutes</a>
+            <a href="/Site_Actu_Dynamique/accueil.php" class="filter-pill <?= !isset($_GET['id']) ? 'active' : '' ?>">Toutes</a>
             <?php foreach ($categories as $cat): ?>
                 <?php if ($cat['total_articles'] > 0): ?>
-                    <a href="/Site_Actu_Dynamique/articles/par_categorie.php?id=<?= $cat['id'] ?>" class="filter-pill">
-                        <?= htmlspecialchars($cat['nom']) ?> 
+                    <a href="/Site_Actu_Dynamique/articles/par_categorie.php?id=<?= $cat['id'] ?>" 
+                       class="filter-pill <?= (isset($_GET['id']) && $_GET['id'] == $cat['id']) ? 'active' : '' ?>">
+                        <?= htmlspecialchars($cat['nom']) ?>
                         <span class="pill-count"><?= $cat['total_articles'] ?></span>
                     </a>
                 <?php endif; ?>
             <?php endforeach; ?>
         </div>
-    </div> -->
-    <div class="filter-wrapper">
-    <span class="filter-label">Explorer par catégorie :</span>
-    <div class="filter-group">
-        <a href="/Site_Actu_Dynamique/accueil.php" class="filter-pill <?= !isset($_GET['id']) ? 'active' : '' ?>">
-            Toutes
-        </a>
-
-        <?php foreach ($categories as $cat): ?>
-            <?php if ($cat['total_articles'] > 0): ?>
-                <a href="/Site_Actu_Dynamique/articles/par_categorie.php?id=<?= $cat['id'] ?>" 
-                   class="filter-pill <?= (isset($_GET['id']) && $_GET['id'] == $cat['id']) ? 'active' : '' ?>">
-                    <?= htmlspecialchars($cat['nom']) ?>
-                    <span class="pill-count"><?= $cat['total_articles'] ?></span>
-                </a>
-            <?php endif; ?>
-        <?php endforeach; ?>
     </div>
-</div>
+
+    <?php if ($article_une): ?>
+        <section class="main-featured">
+            <div class="featured-badge">À LA UNE</div>
+            <div class="featured-flex">
+                <div class="featured-img">
+                    <?php if (!empty($article_une['image'])): ?>
+                        <img src="/Site_Actu_Dynamique/uploads/<?= htmlspecialchars($article_une['image']) ?>" alt="Image à la une">
+                    <?php else: ?>
+                        <div class="image-placeholder">XIBAAR YI</div>
+                    <?php endif; ?>
+                </div>
+                <div class="featured-text">
+                    <span class="cat-tag"><?= htmlspecialchars($article_une['categorie']) ?></span>
+                    <h1><?= htmlspecialchars($article_une['titre']) ?></h1>
+                    <p><?= htmlspecialchars(mb_strimwidth($article_une['description_courte'], 0, 180, "...")) ?></p>
+                    <div class="card-meta">
+                        <span>Par <strong><?= htmlspecialchars($article_une['auteur']) ?></strong></span>
+                        <time><?= date('d/m/Y', strtotime($article_une['date_publication'])) ?></time>
+                    </div>
+                    <a href="/Site_Actu_Dynamique/articles/detail.php?id=<?= $article_une['id'] ?>" class="btn-primary">Lire l'article</a>
+                </div>
+            </div>
+        </section>
+    <?php endif; ?>
 
     <h1>Dernières actualités</h1>
 
-    <?php if (empty($articles)): ?>
+    <?php if (empty($articles) && !$article_une): ?>
         <p class="vide">Aucun article disponible pour le moment.</p>
     <?php endif; ?>
 
@@ -101,7 +113,7 @@ $categories = $pdo->query(
                     <?php if (!empty($a['image'])): ?>
                         <img src="/Site_Actu_Dynamique/uploads/<?= htmlspecialchars($a['image']) ?>" alt="<?= htmlspecialchars($a['titre']) ?>">
                     <?php else: ?>
-                        <div class="image-placeholder">Images XIBAAR YI</div>
+                        <div class="image-placeholder">XIBAAR YI</div>
                     <?php endif; ?>
                     
                     <a href="/Site_Actu_Dynamique/articles/par_categorie.php?id=<?= $a['id_categorie'] ?>" class="card-badge">
@@ -115,11 +127,9 @@ $categories = $pdo->query(
                             <?= htmlspecialchars(mb_strimwidth($a['titre'], 0, 60, "...")) ?>
                         </a>
                     </h2>
-
                     <p class="card-excerpt">
                         <?= htmlspecialchars(mb_strimwidth($a['description_courte'], 0, 100, "...")) ?>
                     </p>
-
                     <footer class="card-meta">
                         <span>Par <strong><?= htmlspecialchars($a['auteur']) ?></strong></span>
                         <time><?= date('d/m/Y', strtotime($a['date_publication'])) ?></time>

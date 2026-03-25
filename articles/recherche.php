@@ -3,7 +3,6 @@
 require_once __DIR__ . '/../config/db.php';
 require_once __DIR__ . '/../config/session.php';
 
-autoriser(['admin', 'editeur', 'utilisateur']); 
 
 $pdo = getPDO();
 $search = isset($_GET['q']) ? trim($_GET['q']) : '';

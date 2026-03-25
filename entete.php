@@ -9,7 +9,7 @@ $nom_site = "XIBAAR YI";
             <div class="texte-logo">
                 <h1 class="titre-site"><?php echo $nom_site; ?></h1>
                 <p class="slogan-site">
-                    Suivez l'information en temps réel au <strong>SÉNÉGAL</strong> — ESP Dakar
+                    Suivez l'information en temps réel au <strong>SÉNÉGAL</strong>
                 </p>
             </div>
         </div>

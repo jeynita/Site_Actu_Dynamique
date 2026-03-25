@@ -9,7 +9,6 @@ $id = (int)($_GET['id'] ?? 0);
 
 if ($id > 0) {
     try {
-       
         $stmt = $pdo->prepare('UPDATE articles SET est_supprime = 1 WHERE id = :id');
         $stmt->execute([':id' => $id]);
         

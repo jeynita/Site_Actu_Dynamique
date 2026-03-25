@@ -623,3 +623,122 @@ h1 {
 @media (max-width: 768px) {
     .articles-grid { grid-template-columns: 1fr; }
 }
+.main-featured {
+    background: #fff;
+    border-radius: 10px;
+    box-shadow: 0 5px 20px rgba(0,0,0,0.08);
+    margin-bottom: 40px;
+    overflow: hidden;
+    position: relative;
+    border: 1px solid #eee;
+}
+
+.featured-badge {
+    position: absolute;
+    top: 20px;
+    left: 20px;
+    background: #e74c3c; /* Rouge pour l'urgence */
+    color: white;
+    padding: 5px 15px;
+    font-weight: bold;
+    z-index: 10;
+    border-radius: 4px;
+}
+
+.featured-flex {
+    display: flex;
+    flex-wrap: wrap;
+}
+
+.featured-img {
+    flex: 1;
+    min-width: 300px;
+    height: 400px;
+}
+
+.featured-img img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.featured-text {
+    flex: 1;
+    padding: 40px;
+    min-width: 300px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.cat-tag {
+    color: #007bff;
+    text-transform: uppercase;
+    font-weight: bold;
+    font-size: 0.9rem;
+}
+
+.featured-text h1 {
+    font-size: 2rem;
+    margin: 15px 0;
+    line-height: 1.2;
+}
+
+.btn-primary {
+    display: inline-block;
+    background: #007bff;
+    color: white;
+    padding: 10px 25px;
+    border-radius: 5px;
+    text-decoration: none;
+    margin-top: 20px;
+    width: fit-content;
+}
+
+/* Titre de section */
+.section-title {
+    margin-bottom: 25px;
+    padding-bottom: 10px;
+    border-bottom: 3px solid #007bff;
+    display: inline-block;
+}
+/* --- OPTIMISATIONS FINALES RESPONSIVE --- */
+
+/* Empêche le tableau de casser la mise en page sur petit écran */
+.tableau {
+    display: table; /* Garde le comportement table par défaut */
+    width: 100%;
+}
+
+/* Conteneur de secours si le tableau est trop large */
+main {
+    overflow-x: hidden; /* Évite le scroll horizontal de toute la page */
+}
+
+@media (max-width: 768px) {
+    /* Rend le tableau défilable horizontalement sur mobile */
+    .tableau {
+        display: block;
+        overflow-x: auto;
+        white-space: nowrap;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    /* Optimisation des filtres : défilement horizontal fluide */
+    .filter-group {
+        display: flex;
+        flex-wrap: nowrap;
+        overflow-x: auto;
+        gap: 8px;
+        padding-bottom: 5px;
+        scrollbar-width: none; /* Cache la barre sur Firefox */
+    }
+    
+    .filter-group::-webkit-scrollbar {
+        display: none; /* Cache la barre sur Chrome/Safari */
+    }
+
+    .filter-pill {
+        flex: 0 0 auto; /* Empêche les pilules de rétrécir */
+    }
+}

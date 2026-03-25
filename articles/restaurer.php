@@ -10,5 +10,5 @@ if ($id > 0) {
     $stmt->execute([':id' => $id]);
 }
 
-header('Location: corbeille.php?msg=restaure');
+header('Location: corbeille.php?msg=restaurer');
 exit;

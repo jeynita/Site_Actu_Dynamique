@@ -19,5 +19,5 @@ if ($id > 0) {
     $stmt->execute([':id' => $id]);
 }
 
-header('Location: corbeille.php?msg=detruit');
+header('Location: corbeille.php?msg=supprimer');
 exit;

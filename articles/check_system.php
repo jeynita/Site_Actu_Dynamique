@@ -9,7 +9,7 @@ if (!is_dir($dossier)) {
     echo "<p style='color:green;'>Le dossier 'uploads' est présent.</p>";
     
     if (is_writable($dossier)) {
-        echo "<p style='color:green;'>Le dossier est accessible en écriture (Prêt pour l'upload).</p>";
+        echo "<p style='color:green;'>Le dossier est accessible en écriture .</p>";
     } else {
         echo "<p style='color:red;'>Erreur : PHP ne peut pas écrire dans le dossier. Vérifiez les permissions.</p>";
     }

@@ -34,7 +34,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if (!in_array($extension, $extensions_valides)) {
             $erreurs[] = "Format d'image non supporté.";
         } else {
-            // uniqid pour éviter les écrasements de fichiers
             $nom_image = uniqid('art_', true) . '.' . $extension;
             $destination = $upload_dir . $nom_image;
 

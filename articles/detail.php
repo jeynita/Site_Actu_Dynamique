@@ -25,7 +25,7 @@ if (!$article) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title><?= htmlspecialchars($article['titre']) ?> - ESP Actu</title>
+    <title><?= htmlspecialchars($article['titre']) ?> Senegal Actu</title>
     <link rel="stylesheet" href="/Site_Actu_Dynamique/css/style.css">
 </head>
 <body>
