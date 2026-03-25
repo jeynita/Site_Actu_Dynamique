@@ -537,3 +537,89 @@ h1 {
     .filter-wrapper { padding: 1rem; }
     .filter-pill { padding: 6px 12px; font-size: 0.85rem; }
 }
+/* --- GRILLE D'ACTUALITÉS "À LA UNE" --- */
+.articles-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); /* Crée 3 colonnes sur PC */
+    gap: 25px;
+    margin-top: 20px;
+}
+
+.card {
+    background: #fff;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+    transition: all 0.3s ease;
+    display: flex;
+    flex-direction: column;
+    border: 1px solid #e2e8f0;
+}
+
+.card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 20px rgba(0,0,0,0.15);
+}
+
+.card-image {
+    position: relative;
+    height: 190px;
+    background: #edf2f7;
+}
+
+.card-image img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover; /* Important : l'image remplit le cadre sans se déformer */
+}
+
+.card-badge {
+    position: absolute;
+    top: 12px;
+    left: 12px;
+    background: #261fea;
+    color: #fff;
+    padding: 4px 10px;
+    border-radius: 15px;
+    font-size: 0.75rem;
+    font-weight: bold;
+}
+
+.card-content {
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    flex-grow: 1;
+}
+
+.card-content h2 {
+    font-size: 1.15rem;
+    line-height: 1.4;
+    margin-bottom: 10px;
+}
+
+.card-content h2 a {
+    color: #1a1a2e;
+    text-decoration: none !important;
+}
+
+.card-excerpt {
+    color: #64748b;
+    font-size: 0.9rem;
+    margin-bottom: 20px;
+}
+
+.card-meta {
+    margin-top: auto;
+    padding-top: 12px;
+    border-top: 1px solid #f1f5f9;
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.8rem;
+    color: #94a3b8;
+}
+
+/* Adaptation Mobile */
+@media (max-width: 768px) {
+    .articles-grid { grid-template-columns: 1fr; }
+}

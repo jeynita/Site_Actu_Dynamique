@@ -4,6 +4,7 @@ require_once __DIR__ . '/../config/session.php';
 
 autoriser(['editeur', 'administrateur']);
 
+
 $pdo = getPDO();
 
 $stmt = $pdo->query('
