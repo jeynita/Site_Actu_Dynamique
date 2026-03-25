@@ -465,7 +465,6 @@ h1 {
     gap: 1rem;                   
 }
 
-/* --- AJOUT : STYLES FILTRES CATÉGORIES (MODERN UI) --- */
 .filter-wrapper {
     margin: 1.5rem 0;
     padding: 1.2rem;
@@ -537,7 +536,6 @@ h1 {
     .filter-wrapper { padding: 1rem; }
     .filter-pill { padding: 6px 12px; font-size: 0.85rem; }
 }
-/* --- GRILLE D'ACTUALITÉS "À LA UNE" --- */
 .articles-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); /* Crée 3 colonnes sur PC */
@@ -570,7 +568,7 @@ h1 {
 .card-image img {
     width: 100%;
     height: 100%;
-    object-fit: cover; /* Important : l'image remplit le cadre sans se déformer */
+    object-fit: cover;
 }
 
 .card-badge {
@@ -619,7 +617,6 @@ h1 {
     color: #94a3b8;
 }
 
-/* Adaptation Mobile */
 @media (max-width: 768px) {
     .articles-grid { grid-template-columns: 1fr; }
 }
@@ -637,7 +634,7 @@ h1 {
     position: absolute;
     top: 20px;
     left: 20px;
-    background: #e74c3c; /* Rouge pour l'urgence */
+    background: #e74c3c; 
     color: white;
     padding: 5px 15px;
     font-weight: bold;
@@ -695,28 +692,23 @@ h1 {
     width: fit-content;
 }
 
-/* Titre de section */
 .section-title {
     margin-bottom: 25px;
     padding-bottom: 10px;
     border-bottom: 3px solid #007bff;
     display: inline-block;
 }
-/* --- OPTIMISATIONS FINALES RESPONSIVE --- */
 
-/* Empêche le tableau de casser la mise en page sur petit écran */
 .tableau {
-    display: table; /* Garde le comportement table par défaut */
+    display: table; 
     width: 100%;
 }
 
-/* Conteneur de secours si le tableau est trop large */
 main {
-    overflow-x: hidden; /* Évite le scroll horizontal de toute la page */
+    overflow-x: hidden; 
 }
 
 @media (max-width: 768px) {
-    /* Rend le tableau défilable horizontalement sur mobile */
     .tableau {
         display: block;
         overflow-x: auto;
@@ -724,21 +716,20 @@ main {
         -webkit-overflow-scrolling: touch;
     }
 
-    /* Optimisation des filtres : défilement horizontal fluide */
     .filter-group {
         display: flex;
         flex-wrap: nowrap;
         overflow-x: auto;
         gap: 8px;
         padding-bottom: 5px;
-        scrollbar-width: none; /* Cache la barre sur Firefox */
+        scrollbar-width: none; 
     }
     
     .filter-group::-webkit-scrollbar {
-        display: none; /* Cache la barre sur Chrome/Safari */
+        display: none; 
     }
 
     .filter-pill {
-        flex: 0 0 auto; /* Empêche les pilules de rétrécir */
+        flex: 0 0 auto; 
     }
 }
