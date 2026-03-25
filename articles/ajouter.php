@@ -1,99 +1,148 @@
 <?php
 require_once __DIR__ . '/../config/db.php';
 require_once __DIR__ . '/../config/session.php';
+
 autoriser(['editeur', 'administrateur']);
+
 $pdo = getPDO();
-$categories = $pdo->query('SELECT id, nom FROM categories ORDER BY nom')->fetchAll();
 $erreurs = [];
-$d = ['titre'=>'','description_courte'=>'','contenu'=>'','id_categorie'=>0];
+$succes = false;
+
+$id_auteur = $_SESSION['utilisateur']['id'] ?? null;
+
+$upload_dir = realpath(__DIR__ . '/..') . DIRECTORY_SEPARATOR . 'uploads' . DIRECTORY_SEPARATOR;
+
+if (!is_dir($upload_dir)) {
+    mkdir($upload_dir, 0777, true);
+}
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-$d['titre'] = trim($_POST['titre'] ?? '');
-$d['description_courte'] = trim($_POST['description_courte'] ?? '');
-$d['contenu'] = trim($_POST['contenu'] ?? '');
-$d['id_categorie'] = (int)($_POST['id_categorie'] ?? 0);
-if (empty($d['titre'])) $erreurs[] = 'Le titre est obligatoire.';
-if (empty($d['description_courte'])) $erreurs[] = 'La description courte est obligatoire.';
-if (empty($d['contenu'])) $erreurs[] = 'Le contenu est obligatoire.';
-if ($d['id_categorie'] <= 0) $erreurs[] = 'Veuillez choisir une categorie.';
-if (empty($erreurs)) {
-$stmt = $pdo->prepare(
-'INSERT INTO articles (titre, description_courte, contenu, id_categorie, id_auteur)
-VALUES (:titre, :desc, :contenu, :cat, :auteur)'
-);
-$stmt->execute([
-':titre' => $d['titre'],
-':desc' => $d['description_courte'],
-':contenu' => $d['contenu'],
-':cat' => $d['id_categorie'],
-':auteur' => $_SESSION['utilisateur']['id'],
-]);
-header('Location: liste.php');
-exit;
+    $titre = trim($_POST['titre'] ?? '');
+    $description = trim($_POST['description_courte'] ?? '');
+    $contenu = trim($_POST['contenu'] ?? '');
+    $id_categorie = (int)($_POST['id_categorie'] ?? 0);
+    $nom_image = null;
+
+    if (empty($titre) || empty($description) || empty($contenu) || $id_categorie <= 0) {
+        $erreurs[] = "Tous les champs obligatoires (*) doivent être remplis.";
+    }
+
+    if (isset($_FILES['image']) && $_FILES['image']['error'] === UPLOAD_ERR_OK) {
+        $extension = strtolower(pathinfo($_FILES['image']['name'], PATHINFO_EXTENSION));
+        $extensions_valides = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
+
+        if (!in_array($extension, $extensions_valides)) {
+            $erreurs[] = "Format d'image non supporté.";
+        } else {
+            // uniqid pour éviter les écrasements de fichiers
+            $nom_image = uniqid('art_', true) . '.' . $extension;
+            $destination = $upload_dir . $nom_image;
+
+            if (!move_uploaded_file($_FILES['image']['tmp_name'], $destination)) {
+                $erreurs[] = "Erreur lors du transfert de l'image.";
+                $nom_image = null;
+            }
+        }
+    }
+
+    if (empty($erreurs)) {
+        try {
+            $stmt = $pdo->prepare("
+                INSERT INTO articles (titre, description_courte, contenu, id_categorie, id_auteur, image, date_publication) 
+                VALUES (:titre, :desc, :cont, :cat, :auteur, :img, NOW())
+            ");
+            $stmt->execute([
+                ':titre'  => $titre,
+                ':desc'   => $description,
+                ':cont'   => $contenu,
+                ':cat'    => $id_categorie,
+                ':auteur' => $id_auteur,
+                ':img'    => $nom_image
+            ]);
+            $succes = true;
+        } catch (PDOException $e) {
+            $erreurs[] = "Erreur SQL : " . $e->getMessage();
+        }
+    }
 }
-}
+
+$categories = $pdo->query("SELECT id, nom FROM categories ORDER BY nom ASC")->fetchAll();
 ?>
+
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-<meta charset="UTF-8"><title>Ajouter un article</title>
-<link rel="stylesheet" href="/Site_Actu_Dynamique/css/style.css">
+    <meta charset="UTF-8">
+    <title>Ajouter un article</title>
+    <link rel="stylesheet" href="/Site_Actu_Dynamique/css/style.css">
+    <style>
+        .img-preview {
+            max-width: 100%;
+            height: auto;
+            max-height: 300px;
+            border-radius: 8px;
+            object-fit: cover;
+        }
+    </style>
 </head>
 <body>
-<?php include __DIR__ . '/../entete.php'; include __DIR__ . '/../menu.php'; ?>
-<main class="container">
-<h1>Ajouter un article</h1>
-<?php foreach ($erreurs as $e): ?>
-<div class="alerte erreur"><?= htmlspecialchars($e) ?></div>
-<?php endforeach; ?>
-<form id="formArticle" method="post" novalidate>
-<div class="champ">
-<label for="titre">Titre *</label>
-<input type="text" id="titre" name="titre" value="<?= htmlspecialchars($d['titre']) ?>">
-<span class="erreur-js" id="err-titre"></span>
-</div>
-<div class="champ">
-<label for="description_courte">Description courte *</label>
-<textarea id="description_courte" name="description_courte" rows="3"><?=
-htmlspecialchars($d['description_courte']) ?></textarea>
-<span class="erreur-js" id="err-desc"></span>
-</div>
-<div class="champ">
-<label for="contenu">Contenu *</label>
-<textarea id="contenu" name="contenu" rows="10"><?= htmlspecialchars($d['contenu'])
-?></textarea>
-<span class="erreur-js" id="err-contenu"></span>
-</div>
-<div class="champ">
-<label for="id_categorie">Categorie *</label>
-<select id="id_categorie" name="id_categorie">
-<option value="">-- Choisir --</option>
-<?php foreach ($categories as $cat): ?>
-<option value="<?= $cat['id'] ?>" <?= $d['id_categorie']==$cat['id']?'selected':'' ?>>
-<?= htmlspecialchars($cat['nom']) ?>
-</option>
-<?php endforeach; ?>
-</select>
-<span class="erreur-js" id="err-cat"></span>
-</div>
-<button type="submit" class="btn-primaire">Publier</button>
-<a href="liste.php" class="btn-secondaire">Annuler</a>
-</form>
-</main>
-<?php include __DIR__ . '/../pied.php'; ?>
-<script>
-document.getElementById('formArticle').addEventListener('submit', function(e) {
-let ok = true;
-[['titre','err-titre','Le titre est obligatoire.'],
-['description_courte','err-desc','La description est obligatoire.'],
-['contenu','err-contenu','Le contenu est obligatoire.'],
-['id_categorie','err-cat','Veuillez choisir une categorie.']
-].forEach(([id,errId,msg]) => {
-document.getElementById(errId).textContent = '';
-if (!document.getElementById(id).value.trim()) {
-document.getElementById(errId).textContent = msg; ok = false;
-}
-});
-if (!ok) e.preventDefault();
-});
-</script>
-</body></html>
+    <?php include __DIR__ . '/../entete.php'; ?>
+    <?php include __DIR__ . '/../menu.php'; ?>
+
+    <main class="container">
+        <h1>Ajouter un nouvel article</h1>
+
+        <?php if ($succes): ?>
+            <div class="alerte succes">
+                L'article a été publié avec succès ! 
+                <a href="/Site_Actu_Dynamique/accueil.php">Retour à l'accueil</a>
+            </div>
+        <?php endif; ?>
+
+        <?php foreach ($erreurs as $err): ?>
+            <div class="alerte erreur"><?= htmlspecialchars($err) ?></div>
+        <?php endforeach; ?>
+
+        <form action="ajouter.php" method="POST" enctype="multipart/form-data">
+            <div class="champ">
+                <label>Titre *</label>
+                <input type="text" name="titre" value="<?= htmlspecialchars($_POST['titre'] ?? '') ?>" required>
+            </div>
+
+            <div class="champ">
+                <label>Catégorie *</label>
+                <select name="id_categorie" required>
+                    <option value="">-- Choisir --</option>
+                    <?php foreach ($categories as $cat): ?>
+                        <option value="<?= $cat['id'] ?>" <?= (isset($_POST['id_categorie']) && $_POST['id_categorie'] == $cat['id']) ? 'selected' : '' ?>>
+                            <?= htmlspecialchars($cat['nom']) ?>
+                        </option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
+
+            <div class="champ">
+                <label>Image d'illustration (JPG, PNG, WEBP)</label>
+                <input type="file" name="image" accept="image/*">
+            </div>
+
+            <div class="champ">
+                <label>Description courte *</label>
+                <textarea name="description_courte" rows="3" required><?= htmlspecialchars($_POST['description_courte'] ?? '') ?></textarea>
+            </div>
+
+            <div class="champ">
+                <label>Contenu de l'article *</label>
+                <textarea name="contenu" rows="10" required><?= htmlspecialchars($_POST['contenu'] ?? '') ?></textarea>
+            </div>
+
+            <div class="actions">
+                <button type="submit" class="btn-primaire">Publier l'article</button>
+                <a href="/Site_Actu_Dynamique/accueil.php" class="btn-secondaire">Annuler</a>
+            </div>
+        </form>
+    </main>
+
+    <?php include __DIR__ . '/../pied.php'; ?>
+</body>
+</html>
