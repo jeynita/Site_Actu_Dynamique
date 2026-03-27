@@ -6,11 +6,11 @@ $pdo  = getPDO();
 $id   = (int)($_GET['id'] ?? 0);
 
 $stmt = $pdo->prepare(
-    'SELECT a.*, c.nom AS categorie, CONCAT(u.prenom, " ", u.nom) AS auteur
-     FROM articles a
-     JOIN categories c ON a.id_categorie = c.id
-     JOIN utilisateurs u ON a.id_auteur = u.id
-     WHERE a.id = :id AND a.est_supprime = 0' 
+'SELECT a.*, c.nom AS categorie, CONCAT(u.prenom, " ", u.nom) AS auteur
+FROM articles a
+JOIN categories c ON a.id_categorie = c.id
+JOIN utilisateurs u ON a.id_auteur = u.id
+WHERE a.id = :id'
 );
 $stmt->execute([':id' => $id]);
 $article = $stmt->fetch();

@@ -1,48 +1,31 @@
-
-
-CREATE DATABASE IF NOT EXISTS site_actualite
-    CHARACTER SET utf8mb4
-    COLLATE utf8mb4_unicode_ci;
-
-USE site_actualite;
-
-
-CREATE TABLE IF NOT EXISTS categories (
-    id  INT AUTO_INCREMENT PRIMARY KEY,
-    nom VARCHAR(100) NOT NULL UNIQUE
-) ENGINE=InnoDB;
-
-
-CREATE TABLE IF NOT EXISTS utilisateurs (
-    id           INT AUTO_INCREMENT PRIMARY KEY,
-    nom          VARCHAR(100) NOT NULL,
-    prenom       VARCHAR(100) NOT NULL,
-    login        VARCHAR(100) NOT NULL UNIQUE,
-    mot_de_passe VARCHAR(255) NOT NULL,
-    role         ENUM('editeur','administrateur') NOT NULL DEFAULT 'editeur',
-    created_at   TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-) ENGINE=InnoDB;
-
-CREATE TABLE IF NOT EXISTS articles (
-    id                 INT AUTO_INCREMENT PRIMARY KEY,
-    titre              VARCHAR(255) NOT NULL,
-    description_courte TEXT NOT NULL,
-    contenu            LONGTEXT NOT NULL,
-    image              VARCHAR(255) DEFAULT NULL, 
-    date_publication   DATETIME DEFAULT CURRENT_TIMESTAMP,
-    id_categorie       INT NOT NULL,
-    id_auteur          INT NOT NULL,
-    CONSTRAINT fk_categorie FOREIGN KEY (id_categorie) REFERENCES categories(id) ON DELETE RESTRICT,
-    CONSTRAINT fk_auteur    FOREIGN KEY (id_auteur)    REFERENCES utilisateurs(id) ON DELETE RESTRICT
-) ENGINE=InnoDB;
-
+-- phpMyAdmin SQL Dump
+-- version 5.2.1
+-- https://www.phpmyadmin.net/
+--
+-- Hôte : 127.0.0.1
+-- Généré le : mer. 25 mars 2026 à 13:31
+-- Version du serveur : 10.4.32-MariaDB
+-- Version de PHP : 8.2.12
 
 SET SQL_MODE = "NO_AUTO_VALUE_ON_ZERO";
 START TRANSACTION;
 SET time_zone = "+00:00";
 
 
+/*!40101 SET @OLD_CHARACTER_SET_CLIENT=@@CHARACTER_SET_CLIENT */;
+/*!40101 SET @OLD_CHARACTER_SET_RESULTS=@@CHARACTER_SET_RESULTS */;
+/*!40101 SET @OLD_COLLATION_CONNECTION=@@COLLATION_CONNECTION */;
+/*!40101 SET NAMES utf8mb4 */;
 
+--
+-- Base de données : `site_actualite`
+--
+
+-- --------------------------------------------------------
+
+--
+-- Structure de la table `articles`
+--
 
 CREATE TABLE `articles` (
   `id` int(11) NOT NULL,
@@ -56,7 +39,9 @@ CREATE TABLE `articles` (
   `est_supprime` tinyint(1) DEFAULT 0
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-
+--
+-- Déchargement des données de la table `articles`
+--
 
 INSERT INTO `articles` (`id`, `titre`, `description_courte`, `contenu`, `date_publication`, `id_categorie`, `id_auteur`, `image`, `est_supprime`) VALUES
 (8, 'Transparence et gouvernance des ressources extractives : Le Sénégal noté “Très bien”', 'Transparence et gouvernance des ressources extractives : Le Sénégal noté “Très bien”', '“Très bon”. C’est le score qui a été décerné au Sénégal au bout de son troisième processus de validation, à l’aune de la mise en œuvre de la Norme ITIE 2023. Le pays a obtenu la note de 89 sur 10, qui conforte son leadership mondial dans le domaine. \r\n\r\n“Avec 89 sur 100, le Sénégal maintient son leadership à travers le monde et démontre que le niveau de transparence est très satisfaisant, que non seulement la norme ITIE est pertinente au Sénégal, mais qu\'il y a une bonne inclusivité dans la gestion des ressources naturelles”, a expliqué Taddée Adiouma Seck.\r\n\r\nLe Secrétaire Permanent du Comité national de l’Initiative pour la transparence dans les industries extractives (Itie-Sénégal) s’exprimait ce mardi, lors d’un point de presse sur la présentation des résultats du processus de validation. \r\n\r\nEn effet, pour la composante “résultat et impact de la mise en œuvre”, le Sénégal a été noté 92,5 sur 100. Pour les aspects liés à “l\'engagement des parties prenantes”, le pays a obtenu 87,5 sur 100. Quant aux aspects liés à la transparence, une note de 81 lui a été décernée.\r\n\r\n“Sur presque toutes les composantes, nous sommes vraiment à un niveau très élevé, ou à une performance très élevée. Les déterminants qui nous ont valu ce score, c\'est globalement le plan de travail. La manière dont le Sénégal réalise son plan de travail est très appréciée”, assure M. Seck\r\n\r\nMais, le Sénégal n’aura pas obtenu de bons scores partout. Il a été moins bien noté pour les transferts infranationaux. M. Seck souligne que “c\'est le grand défi de gouvernance du Sénégal, puisque les dispositifs juridiques mis en œuvre depuis plus d\'une décennie ne sont pas fonctionnels”. A ce niveau, le Sénégal a obtenu la note de 50 sur 100.\r\n\r\nEn effet, le pays a mis en place des outils de redistribution de la rente minière à travers le Fonds de péréquation et d\'appui et le Fonds d\'appui au développement local. Mais, ces outils peinent à être appliqués depuis plus d\'une décennie.\r\n\r\n“Pour le Fonds de péréquation, malgré les arrêtés de redistribution, les transferts ne sont pas effectifs dans la réalité. Il n\'y a eu qu\'un seul transfert en 2020”, regrette M. Seck.\r\n\r\nPrésident du comité national de l’ITIE Sénégal, Thialy Faye a salué une performance globalement remarquable. Celle-ci traduit, dit-il, l’ampleur des progrès réalisés par notre pays dans la gouvernance du secteur extractif. \r\n\r\nMais, il a tenu à souligner que “ce score de 89 sur 100 ne constitue pas une finalité, il représente plutôt une base solide sur laquelle nous devons continuer de bâtir”.', '2026-03-24 19:22:53', 9, 1, 'art_69c2e48dbf7d64.66170024.jpeg', 0),
@@ -77,13 +62,20 @@ INSERT INTO `articles` (`id`, `titre`, `description_courte`, `contenu`, `date_pu
 (23, 'Le ngalakh, un repas de Pâques', 'Comme pour toutes les religions, le partage est un principe cher au christianisme. Il se matérialise à travers l’aumône et l’entraide, surtout durant les célébrations cultuelles. C’est dans ce sens qu’il faut comprendre le repas distribué aux non-chrétiens à l’occasion des fêtes de Pâques : le ngalakh.', 'Au Sénégal, le ngalakh de Pâque symbolise le vivre ensemble entre chrétiens et musulmans. Pour sa fameuse recette, la famille Cabo habitant le quartier Quinzambougou de la commune de Tambacounda s’est réveillée. Sous nos yeux, Rose, l’aînée de cette famille de huit enfants se pointe au robinet pour chercher de l’eau en vue d’entamer le mélange. Pour préparer le ngalakh, il faut du sucre, du mil, de la pâte d’arachide, du pain de singe, du sucre, de l’arome, de l’ananas, de la noix de coco, du raisin.\r\n\r\nDans la cour, de grands récipients contenant du pain de singe et de la pâte d’arachide. Autour de ces bols, Rose et sa voisine commencent le mélange en attendant que les quelques femmes du quartier arrivent pour leur donner un coup de main.\r\nDurant plus d’une heure, elles trempent le pain de singe dans chacun des récipients qui contient déjà de l’eau et de la pâte d’arachide. Au final on obtient un liquide très consistant auquel la pâte d’arachide donne une couleur marron. Parallèlement, du couscous à base de mil est préparé qu’il s’agira ensuite d’ajouter dans ce liquide pour avoir enfin du ngalakh. Quant aux arômes, aux tranches d’ananas, au sucre, au coco râpé, au raisin, c’est pour donner un goût succulent au ngalakh qui est mis au frais pour éviter qu’il ne fermente.\r\n\r\nSi certaines familles chrétiennes choisissent le vendredi saint, dernier vendredi du mois de carême, d’autres par contre attendent le lendemain pour préparer ce repas qui est très prisé par les musulmans. Antoinette Cabo explique que si les musulmans aiment le ngalakh, c’est bien parce qu’il a la bénédiction de Dieu. Mais pour beaucoup de prêtres, ce repas n’a pas une histoire particulière de la religion chrétienne.\r\n\r\nÀ la fin de la préparation, des pots, des bouteilles, de petits seaux se bousculent prêts à être remplis et distribués aux voisins et aux proches, qu’ils soient chrétiens ou non. Le ngalakh, en plus de symboliser le partage, renforce la cohésion sociale entre les différentes confessions religieuses au Sénégal.', '2026-03-25 00:03:07', 16, 7, 'art_69c3263b8dafb8.90974718.png', 0),
 (24, 'Le café Touba, café « saf »', 'Le café Touba est une boisson à base de café aromatisé au poivre de Guinée (le fruit de la Xylopia aethiopica) communément appelé poivre noir ou diar en wolof.', 'Il tire son nom de la ville sénégalaise de Touba et son origine est liée à la fraternité des Mourides ; on raconte que son fondateur, Cheikh Amadou Bamba, a ramené la recette du Gabon où il avait été envoyé en exil. Aujourd’hui encore, la fraternité mouride associe à cette boisson une grande valeur symbolique et la consomme à l’occasion de cérémonies religieuses.\r\n\r\nDepuis quelques années, le café Touba se popularise et, au delà des célébrations religieuses. Il est très facile de trouver des vendeurs ambulants, avec leur petit fourneau et leur casserole, qui le proposent dans la rue. Et on le trouve désormais en vente en sachets dans les boutiques de quartier.\r\n\r\nSon seul défaut : être vendu dans des petites tasses en plastique que les consommateurs jettent négligemment sur le trottoir...', '2026-03-25 00:04:46', 16, 7, 'art_69c3269ec223d2.90583578.jpg', 0);
 
+-- --------------------------------------------------------
 
+--
+-- Structure de la table `categories`
+--
 
 CREATE TABLE `categories` (
   `id` int(11) NOT NULL,
   `nom` varchar(100) NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+--
+-- Déchargement des données de la table `categories`
+--
 
 INSERT INTO `categories` (`id`, `nom`) VALUES
 (16, 'CUISINE'),
@@ -97,6 +89,11 @@ INSERT INTO `categories` (`id`, `nom`) VALUES
 (11, 'SOCIETE'),
 (13, 'SPORT');
 
+-- --------------------------------------------------------
+
+--
+-- Structure de la table `utilisateurs`
+--
 
 CREATE TABLE `utilisateurs` (
   `id` int(11) NOT NULL,
@@ -108,6 +105,9 @@ CREATE TABLE `utilisateurs` (
   `created_at` timestamp NOT NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+--
+-- Déchargement des données de la table `utilisateurs`
+--
 
 INSERT INTO `utilisateurs` (`id`, `nom`, `prenom`, `login`, `mot_de_passe`, `role`, `created_at`) VALUES
 (1, 'Diallo', 'Amadou', 'admin', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'administrateur', '2026-03-19 02:29:26'),
@@ -117,39 +117,66 @@ INSERT INTO `utilisateurs` (`id`, `nom`, `prenom`, `login`, `mot_de_passe`, `rol
 (6, 'Elitrobi', 'Navier', 'navier', '$2y$10$X/gDCzFi6/BZfi0IBMeH/OuGqJqD6DONIlBX/Yq9iCWRaBjOisDeG', 'editeur', '2026-03-24 22:40:22'),
 (7, 'yaay', 'Dut', 'dutyaay', '$2y$10$IfQWnnow1mn1QJq1rtltIOq7Yz6y9QHveB/cLR9BeNCyC0xTLg.P6', 'editeur', '2026-03-24 22:41:39');
 
+--
+-- Index pour les tables déchargées
+--
+
+--
+-- Index pour la table `articles`
+--
 ALTER TABLE `articles`
   ADD PRIMARY KEY (`id`),
   ADD KEY `fk_categorie` (`id_categorie`),
   ADD KEY `fk_auteur` (`id_auteur`);
 
-
+--
+-- Index pour la table `categories`
+--
 ALTER TABLE `categories`
   ADD PRIMARY KEY (`id`),
   ADD UNIQUE KEY `nom` (`nom`);
 
-
+--
+-- Index pour la table `utilisateurs`
+--
 ALTER TABLE `utilisateurs`
   ADD PRIMARY KEY (`id`),
   ADD UNIQUE KEY `login` (`login`);
 
+--
+-- AUTO_INCREMENT pour les tables déchargées
+--
 
+--
+-- AUTO_INCREMENT pour la table `articles`
+--
 ALTER TABLE `articles`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=25;
 
-
-
+--
+-- AUTO_INCREMENT pour la table `categories`
+--
 ALTER TABLE `categories`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=19;
 
-
+--
+-- AUTO_INCREMENT pour la table `utilisateurs`
+--
 ALTER TABLE `utilisateurs`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=8;
 
+--
+-- Contraintes pour les tables déchargées
+--
 
+--
+-- Contraintes pour la table `articles`
+--
 ALTER TABLE `articles`
   ADD CONSTRAINT `fk_auteur` FOREIGN KEY (`id_auteur`) REFERENCES `utilisateurs` (`id`),
   ADD CONSTRAINT `fk_categorie` FOREIGN KEY (`id_categorie`) REFERENCES `categories` (`id`);
 COMMIT;
 
-
-
+/*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
+/*!40101 SET CHARACTER_SET_RESULTS=@OLD_CHARACTER_SET_RESULTS */;
+/*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
