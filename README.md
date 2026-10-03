@@ -8,7 +8,7 @@
 ![HTML5](https://img.shields.io/badge/HTML5-E34F26?style=flat-square&logo=html5&logoColor=white)
 ![CSS3](https://img.shields.io/badge/CSS3-1572B6?style=flat-square&logo=css3&logoColor=white)
 
-## ✨ Fonctionnalités
+## Fonctionnalités
 
 Le site gère trois profils avec des droits différents :
 
@@ -18,13 +18,13 @@ Le site gère trois profils avec des droits différents :
 | **Éditeur** | Ajouter, modifier et supprimer des articles, gérer les catégories |
 | **Administrateur** | Gérer les utilisateurs, accès complet à l'application |
 
-## 🛠️ Technologies
+## Technologies
 
 - **Back-end** : PHP (PDO)
 - **Base de données** : MySQL
 - **Front-end** : HTML, CSS, JavaScript
 
-## 🗂️ Structure du projet
+## Structure du projet
 
 ```
 Site_Actu_Dynamique/
@@ -39,12 +39,12 @@ Site_Actu_Dynamique/
 └── index.php        # Page d'accueil
 ```
 
-## 🗄️ Base de données
+## Base de données
 
 Trois tables : `utilisateurs`, `articles`, `categories`.
 Le script de création est fourni dans `database.sql`.
 
-## ⚙️ Installation
+## Installation
 
 1. Cloner le projet dans le dossier du serveur local (`htdocs` pour XAMPP, `www` pour WAMP) :
 ```bash
@@ -55,7 +55,7 @@ Le script de création est fourni dans `database.sql`.
 4. Démarrer Apache et MySQL (XAMPP, WAMP...).
 5. Ouvrir http://localhost/Site_Actu_Dynamique
 
-## 🔐 Sécurité
+## Sécurité
 
 - Requêtes préparées (PDO) contre les injections SQL
 - Pages protégées par sessions, selon le profil
